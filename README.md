@@ -1,39 +1,58 @@
 # 🏠 HomeNet Lab
 
-**Professional network management and secure remote access portal**
+**Automated secure remote access portal for home networks**
 
-## 🎯 What It Does
+Publishes password-protected web portals with dynamic IP updates, multi-service access, and Remote Desktop connections to host PCs and virtual machines.
 
-HomeNet Lab is a Windows application that automatically publishes a password-protected web portal for secure remote access to your home network services and Remote Desktop.
+---
 
-**Key Features:**
-- 🌐 **Dynamic Service URLs** - Automatically uses your current external IP address
-- 🔄 **Auto-Publishing** - Keeps web portal updated every 5 minutes
-- 🔒 **Password Protected** - SHA-256 encrypted access control
-- 📌 **System Tray** - Runs silently in background
-- 🟢 **Smart Indicators** - Visual connection and upload status
-- 📊 **Live Dashboard** - Real-time configuration display
-- 🎨 **Beautiful UI** - Daily Bing wallpaper backgrounds
+## ⚠️ Prerequisites
+
+### Router Port Forwarding (Required for RDP)
+Configure your router to forward ports to your PC:
+- **Host PC:** Port 3389 (TCP) → Your PC's local IP
+- **Virtual PCs:** Ports 3390, 3391, etc. → Your PC's local IP
+- **Tool:** Use File → Setup Port Forwarding... for netsh commands (copies to clipboard)
+
+### FTP Hosting
+- Web host with FTP upload capability
+- FTP credentials (server, username, password)
+
+---
 
 ## 🚀 Quick Start
 
-### 1. Configuration
-Edit `config.xml` in the application folder:
+### 1. Configure
+Edit `config.xml` or create `[PCNAME].xml` for PC-specific settings:
 
 ```xml
 <Configuration>
   <FTP>
-    <Server>ftp://your-ftp-server.com</Server>
-    <Username>your-ftp-username</Username>
-    <Password>your-ftp-password</Password>
+    <Server>ftp://your-server.com</Server>
+    <Username>username</Username>
+    <Password>password</Password>
     <RemotePath>/public_html/</RemotePath>
     <HtmlFileName>index.html</HtmlFileName>
-    <RdpFileName>HomeNetwork.rdp</RdpFileName>
   </FTP>
 
   <Security>
-    <AccessPassword>YourSecurePassword123</AccessPassword>
+    <AccessPassword>YourSecurePassword</AccessPassword>
   </Security>
+
+  <RDPTargets>
+    <Target>
+      <Name>Host PC</Name>
+      <Port>3389</Port>
+      <FileName>host.rdp</FileName>
+      <Enabled>true</Enabled>
+    </Target>
+    <Target>
+      <Name>VPC - WinServer</Name>
+      <Port>3390</Port>
+      <FileName>vpc-server.rdp</FileName>
+      <Enabled>true</Enabled>
+    </Target>
+  </RDPTargets>
 
   <Services>
     <Service>
@@ -41,7 +60,6 @@ Edit `config.xml` in the application folder:
       <Port>8096</Port>
       <Enabled>true</Enabled>
     </Service>
-    <!-- Add more services as needed -->
   </Services>
 
   <AutoPublish>
@@ -51,415 +69,323 @@ Edit `config.xml` in the application folder:
 </Configuration>
 ```
 
-### 2. Run Application
+### 2. Run
 - Launch `HomeNet Lab.exe`
-- Application loads configuration
-- Dashboard displays current settings
-- Auto-publish starts automatically
-
-### 3. Manual Publish (First Time)
-- Click **File → Publish Web Portal**
-- Watch activity light blink during upload
-- Success dialog shows upload location
-
-### 4. Access Your Portal
-Visit your web portal URL (e.g., `http://yoursite.com/index.html`)
-
-## 🎨 User Interface
-
-### Main Window
-```
-┌─────────────────────────────────────────┐
-│ File                              [□][X]│
-├─────────────────────────────────────────┤
-│                                         │
-│        ┌──────────────────┐            │
-│        │ ⚙️ Configuration │            │
-│        ├──────────────────┤            │
-│        │ FTP Server       │            │
-│        │ Username         │            │
-│        │ Remote Path      │            │
-│        │ Services         │            │
-│        │ Ports            │            │
-│        │ Auto-Publish     │            │
-│        └──────────────────┘            │
-│                                         │
-├─────────────────────────────────────────┤
-│ Bing Image Info        105.242.144.150 │
-│ © Copyright            PC-NAME|192... ●│
-└─────────────────────────────────────────┘
-```
-
-### System Tray (When Minimized)
-Right-click system tray icon:
-- **Publish Web Portal** - Upload files now
-- **Show Window** - Restore window
-- **Exit** - Close application
-
-### Activity Light States
-- 🟢 **Solid Green** - Connected to internet (idle)
-- 🟢 **Blinking Green** - FTP upload in progress
-- ⚫ **Gray** - No internet connection
-
-## 🌐 Web Portal Features
-
-### Password-Protected Access
-- SHA-256 encrypted password
-- Client-side authentication
-- No plain-text credentials
-
-### Dynamic Service Buttons
-Each enabled service creates a button:
-- 🎬 **First Service** (e.g., Emby Server)
-- 🔌 **Additional Services** (Plex, Home Assistant, etc.)
-- 🖥️ **Remote Desktop** - Downloads RDP connection file
-
-### Service URLs
-Automatically built using current external IP:
-- `http://[YourCurrentIP]:[Port]`
-- Always up-to-date
-- No broken links
-
-## ⚙️ Configuration Guide
-
-### FTP Settings
-- **Server** - Your FTP server address (with or without `ftp://`)
-- **Username** - FTP login username
-- **Password** - FTP login password
-- **RemotePath** - Upload directory (must end with `/`)
-- **HtmlFileName** - Web portal filename (default: `index.html`)
-- **RdpFileName** - RDP file name (default: `HomeNetwork.rdp`)
-
-### Security Settings
-- **AccessPassword** - Password for web portal access (will be SHA-256 hashed)
-
-### Service Configuration
-Add multiple services:
-```xml
-<Service>
-  <Name>Service Name</Name>
-  <Port>8096</Port>
-  <Enabled>true</Enabled>
-</Service>
-```
-
-**Common Services:**
-- Emby Server: Port 8096
-- Plex Server: Port 32400
-- Home Assistant: Port 8123
-- Jellyfin: Port 8096
-- Nextcloud: Port 443
-
-### Auto-Publish Settings
-- **Enabled** - `true` or `false`
-- **FrequencySeconds** - Update interval (minimum: 60, recommended: 300)
-
-## 🔄 How It Works
-
-### Automatic Updates (Every 5 Seconds)
-1. Checks internet connection
-2. Updates external IP address
-3. Updates local IP address
-4. Refreshes all displays
-
-### Auto-Publish (Every 5 Minutes)
-1. Checks internet connection
-2. Updates external IP
-3. Generates RDP file with current IP
-4. Uploads RDP file to FTP server
-5. Generates HTML portal with current IP
-6. Uploads HTML portal to FTP server
-7. **Runs silently** (no popups)
-
-### Manual Publish
-1. User clicks **File → Publish Web Portal**
-2. Activity light blinks
-3. Files upload to FTP
-4. **Success/error dialog appears**
-
-## 🎯 Publishing Status Display
-
-During uploads, the footer shows real-time progress:
-- "Preparing..." / "Reading configuration"
-- "Publishing..." / "Updating external IP"
-- "Publishing..." / "Uploading RDP file"
-- "Publishing..." / "Uploading HTML portal"
-- "Complete!" / "Published to your-server"
-- Returns to IP display after 2 seconds
-
-## 📁 Files Generated
-
-### On FTP Server
-- **index.html** (or custom name) - Web portal interface
-- **HomeNetwork.rdp** (or custom name) - Remote Desktop configuration
-
-### RDP File Contents
-- Configured for your external IP address
-- Optimized settings for remote access
-- Auto-reconnect enabled
-- Security negotiation enabled
-
-## 🔒 Security Features
-
-- **SHA-256 Password Hashing** - No plain-text passwords
-- **Client-Side Encryption** - Browser handles authentication
-- **Configurable Access** - Single password protects all services
-- **No Credential Storage** - Passwords hashed, never stored as plain text
-
-## 🐛 Troubleshooting
-
-### Activity Light is Gray
-**Cause:** No internet connection  
-**Fix:** Check your network connection
-
-### Auto-Publish Not Working
-**Check:**
-- `<Enabled>true</Enabled>` in config.xml
-- Internet connection active (green light)
-- FTP credentials correct
-
-### FTP Upload Fails
-Application shows detailed error messages:
-- **Connection Failure** - Check server address and firewall
-- **Authentication Failure** - Verify username and password
-- **Path Error** - Confirm remote path exists with write permissions
-- **Timeout** - Server may be offline or slow
-
-### RDP File Empty or Not Downloading
-**Fixes:**
-- Wait 5 minutes for auto-publish to upload
-- Manually publish: File → Publish Web Portal
-- Clear browser cache (Ctrl+F5)
-- Check FTP server to verify file exists
-
-### Can't Minimize to Tray
-**Fix:** Restart application fresh (not during debugging)
-
-## 💡 Tips & Best Practices
-
-### Auto-Publish Frequency
-- **60s** - Very frequent, high bandwidth
-- **300s (5 min)** - Recommended for typical use
-- **600s (10 min)** - Low bandwidth environments
-
-### Remote Path Structure
-Always end with `/`:
-- ✅ `/public_html/`
-- ❌ `/public_html`
-
-### Service Configuration
-- Use descriptive names: "Emby Server", "Plex Media"
-- Keep ports standard for each service
-- Set `Enabled` to `false` to hide services
-
-### Multiple Computers
-Use different filenames for each computer:
-```xml
-<!-- Computer 1 -->
-<HtmlFileName>desktop.html</HtmlFileName>
-<RdpFileName>desktop.rdp</RdpFileName>
-
-<!-- Computer 2 -->
-<HtmlFileName>laptop.html</HtmlFileName>
-<RdpFileName>laptop.rdp</RdpFileName>
-```
-
-## 📊 System Requirements
-
-- **OS:** Windows 10/11
-- **.NET:** .NET 8.0 Runtime
-- **Internet:** Required for IP updates and publishing
-- **FTP Access:** Web hosting with FTP upload capability
-
-## 🔧 Advanced Features
-
-### System Tray Operation
-- Minimizes to system tray instead of taskbar
-- Background operation with no window
-- Context menu for quick actions
-- Balloon notifications
-
-### Real-Time Monitoring
-- Connection status every 5 seconds
-- IP address updates automatically
-- Configuration display refreshes
-- Activity indicator shows status
-
-### Error Reporting
-- Detailed FTP error messages
-- Specific troubleshooting steps
-- Configuration validation
-- Network status information
-
-## 📱 Web Portal User Experience
-
-1. **Visit Portal** - User navigates to your URL
-2. **See Information** - External IP and last update time displayed
-3. **Click Service** - Select Emby, Plex, RDP, etc.
-4. **Enter Password** - SHA-256 authentication
-5. **Access Service** - Redirects to service or downloads RDP file
-
-### Mobile Friendly
-- Responsive design
-- Touch-friendly buttons
-- Works on phones and tablets
-- Gradient background
-
-## 🎊 Key Benefits
-
-✅ **Always Current** - IPs update automatically  
-✅ **Secure Access** - Password-protected portal  
-✅ **Silent Operation** - Runs in background  
-✅ **Multiple Services** - Add unlimited services  
-✅ **Error Reporting** - Know exactly what's wrong  
-✅ **Professional UI** - Beautiful dark theme  
-✅ **Minimal Setup** - Configure once, runs forever  
-
-## 🔄 Update Process
-
-### What Gets Updated
-- External IP address (from api.ipify.org)
-- RDP file with current IP
-- HTML portal with current IP
-- Service URLs with current IP
-
-### When Updates Happen
-- Every 5 minutes (default)
-- On manual publish
-- On application startup
-- When internet reconnects
-
-## 📝 Example Configurations
-
-### Single Service (Emby)
-```xml
-<Service>
-  <Name>Emby Server</Name>
-  <Port>8096</Port>
-  <Enabled>true</Enabled>
-</Service>
-```
-
-### Multiple Services
-```xml
-<Service>
-  <Name>Emby Server</Name>
-  <Port>8096</Port>
-  <Enabled>true</Enabled>
-</Service>
-<Service>
-  <Name>Plex Server</Name>
-  <Port>32400</Port>
-  <Enabled>true</Enabled>
-</Service>
-<Service>
-  <Name>Home Assistant</Name>
-  <Port>8123</Port>
-  <Enabled>true</Enabled>
-</Service>
-```
-
-### Disable Auto-Publish
-```xml
-<AutoPublish>
-  <Enabled>false</Enabled>
-  <FrequencySeconds>300</FrequencySeconds>
-</AutoPublish>
-```
-
-## 🎨 Customization
-
-### Filenames
-Change uploaded filenames:
-```xml
-<HtmlFileName>portal.html</HtmlFileName>
-<RdpFileName>mypc.rdp</RdpFileName>
-```
-
-### Service Names
-Use any descriptive name:
-```xml
-<Name>My Media Server</Name>
-<Name>Smart Home Hub</Name>
-<Name>File Storage</Name>
-```
-
-### Upload Frequency
-Adjust timing (in seconds):
-```xml
-<FrequencySeconds>600</FrequencySeconds>  <!-- 10 minutes -->
-```
-
-## 🚨 Important Notes
-
-- **Minimum Frequency:** 60 seconds (enforced)
-- **Timeout:** 30 seconds per upload
-- **Password Security:** Use strong passwords
-- **FTP Security:** Ensure FTPS if available
-- **Port Forwarding:** Required for remote access to services
-
-## 📞 Support
-
-### Common Issues
-
-**Issue:** "Cannot connect to FTP server"  
-**Fix:** Check server address, firewall, and internet
-
-**Issue:** "Authentication failed"  
-**Fix:** Verify username and password in config.xml
-
-**Issue:** "Cannot access remote path"  
-**Fix:** Ensure path exists and has write permissions
-
-**Issue:** RDP file has no content  
-**Fix:** Wait for auto-publish cycle, or manually publish
-
-## 🏗️ Technical Details
-
-### Built With
-- WPF (Windows Presentation Foundation)
-- .NET 8.0
-- Visual Basic .NET
-
-### Network Operations
-- HTTP client for IP detection
-- FTP client for file uploads
-- DNS resolution for local IP
-- Bing API for wallpaper images
-
-### Background Processing
-- 5-second connection monitor
-- 300-second auto-publish timer
-- Asynchronous file uploads
-- Non-blocking UI updates
-
-## 📦 What You Get
-
-### Application Files
-- `HomeNet Lab.exe` - Main application
-- `config.xml` - Configuration file
-- `HomeNetLab.ico` - Application icon
-- `HomeNetLab.png` - Window icon
-
-### Generated Files (On FTP)
-- HTML portal (customizable name)
-- RDP connection file (customizable name)
-
-## 🎉 Summary
-
-HomeNet Lab provides a complete solution for:
-- Publishing password-protected web portals
-- Automatic IP address updates
-- Secure remote desktop access
-- Multiple service management
-- Professional network monitoring
-
-**Configure once, runs forever!**
-
-Simply edit `config.xml`, run the application, and enjoy secure remote access to your home network from anywhere in the world.
+- App starts minimized in system tray
+- Publishes portal immediately with current IP
+- Auto-publishes every 5 minutes
+- **Single instance only** - prevents duplicate launches
+
+### 3. Access
+- Visit your portal: `http://yoursite.com/index.html`
+- Enter password to access services or download RDP files
+- Connect to host PC or virtual machines remotely
 
 ---
 
-**Version:** 1.0  
+## 🎯 Key Capabilities
+
+### Auto-Configuration
+- **PC-Specific Configs:** App loads `[PCNAME].xml` automatically or falls back to `config.xml`
+- **PC Branding:** Web portals show PC name when using custom configs (e.g., "SERVER-01 • Secure Access Portal")
+- **Silent Startup:** Launches to system tray with no notifications
+- **Single Instance:** Prevents multiple instances from running
+
+### Publishing
+- **Instant Publish:** Updates portal immediately on startup
+- **Auto-Publish:** Configurable interval (minimum 60s, default 300s)
+- **Manual Publish:** File menu or system tray right-click
+- **Multi-File Upload:** Uploads all RDP files + HTML portal
+
+### Multi-RDP Support
+- **Host PC Access:** Standard RDP on port 3389
+- **Virtual PC Access:** Additional RDP targets on ports 3390, 3391, etc.
+- **Separate Buttons:** Each RDP target gets its own button on web portal
+- **Port Configuration:** Each target specifies port and filename
+
+### Monitoring
+- **Connection Status:** Checks internet every 5 seconds
+- **IP Updates:** External and local IP auto-refresh
+- **Activity Light:** Visual indicator (green=connected, blinking=uploading, gray=offline)
+- **Live Dashboard:** Real-time config and status display
+
+---
+
+## 🔧 Configuration Reference
+
+### FTP Settings
+```xml
+<FTP>
+  <Server>ftp://server.com</Server>      <!-- FTP server address -->
+  <Username>username</Username>           <!-- FTP login -->
+  <Password>password</Password>           <!-- FTP password -->
+  <RemotePath>/public_html/</RemotePath> <!-- Must end with / -->
+  <HtmlFileName>index.html</HtmlFileName>
+</FTP>
+```
+
+### Security
+```xml
+<Security>
+  <AccessPassword>YourPassword</AccessPassword> <!-- SHA-256 hashed on portal -->
+</Security>
+```
+
+### RDP Targets (Multi-Target Support)
+```xml
+<RDPTargets>
+  <Target>
+    <Name>Host PC</Name>              <!-- Display name on portal -->
+    <Port>3389</Port>                 <!-- External port number -->
+    <FileName>host.rdp</FileName>     <!-- RDP filename on FTP -->
+    <Enabled>true</Enabled>           <!-- Show/hide on portal -->
+  </Target>
+</RDPTargets>
+```
+
+**Common Ports:**
+- 3389: Host PC
+- 3390-3399: Virtual PCs
+
+**Legacy Fallback:** If `<RDPTargets>` section is missing, app uses `<RdpFileName>` from FTP section.
+
+### Services (HTTP/HTTPS)
+```xml
+<Services>
+  <Service>
+    <Name>Service Name</Name>
+    <Port>8096</Port>
+    <Enabled>true</Enabled>
+  </Service>
+</Services>
+```
+
+**Common Services:**
+- Emby: 8096
+- Plex: 32400
+- Home Assistant: 8123
+
+### Auto-Publish
+```xml
+<AutoPublish>
+  <Enabled>true</Enabled>
+  <FrequencySeconds>300</FrequencySeconds> <!-- Min: 60, Recommended: 300 -->
+</AutoPublish>
+```
+
+---
+
+## 🖥️ Virtual PC (VPC) Setup
+
+### Network Architecture
+```
+Internet → Router → Host PC → Virtual PCs
+         (3389-3392)  (netsh)  (VPC RDP:3389)
+```
+
+### Step 1: Router Configuration
+Forward ports to host PC:
+```
+External Port → Host PC Internal IP:Port
+3389 → 192.168.1.100:3389   (Host PC)
+3390 → 192.168.1.100:3390   (VPC #1)
+3391 → 192.168.1.100:3391   (VPC #2)
+```
+
+### Step 2: Host PC Port Forwarding
+**Option A:** Use Port Forwarding Wizard
+1. Click **File → Setup Port Forwarding...**
+2. Click **Yes** to copy netsh commands to clipboard
+3. Open PowerShell as Administrator
+4. Paste and run commands
+
+**Option B:** Manual Commands
+Run as Administrator on host PC:
+```powershell
+netsh interface portproxy add v4tov4 listenport=3390 connectaddress=192.168.100.10 connectport=3389
+netsh interface portproxy add v4tov4 listenport=3391 connectaddress=192.168.100.11 connectport=3389
+
+# Verify
+netsh interface portproxy show all
+```
+
+### Step 3: Configure App
+Add RDP targets (see `SERVER-01.xml` example):
+```xml
+<RDPTargets>
+  <Target><Name>Host PC</Name><Port>3389</Port><FileName>host.rdp</FileName><Enabled>true</Enabled></Target>
+  <Target><Name>VPC - WinServer</Name><Port>3390</Port><FileName>vpc-server.rdp</FileName><Enabled>true</Enabled></Target>
+</RDPTargets>
+```
+
+### Result
+Web portal displays:
+- 🖥️ Host PC → downloads `host.rdp` (connects via port 3389)
+- 🖥️ VPC - WinServer → downloads `vpc-server.rdp` (connects via port 3390 → routes to VPC)
+
+---
+
+## 🎨 User Interface
+
+### System Tray (Primary Interface)
+Right-click icon:
+- **Publish Web Portal** - Upload now
+- **Show Window** - View dashboard
+- **Exit** - Close application
+
+Double-click icon to show window.
+
+### Dashboard Window
+Shows real-time information:
+- **Config File** - Active configuration file
+- **FTP Server** - Upload destination
+- **Services** - Enabled services and ports
+- **RDP Targets** - Configured RDP targets and ports
+- **Auto-Publish** - Status and frequency
+- **Activity Light** - Connection status
+- **IP Display** - External IP, PC name, local IP
+
+### Menu Bar
+- **File → Publish Web Portal** - Manual upload with result dialog
+- **File → Setup Port Forwarding...** - VPC setup wizard
+- **File → Exit** - Close application
+
+---
+
+## 🔧 Setup Port Forwarding Wizard
+
+Access via **File → Setup Port Forwarding...**
+
+**Features:**
+1. Reads RDP targets from your config
+2. Shows required router port forwarding rules
+3. Generates netsh commands for host PC → VPC forwarding
+4. Displays your PC name, IPs, and configuration
+5. **Copies commands to clipboard** (click Yes)
+6. Provides step-by-step execution instructions
+
+**No automatic changes made** - full user control!
+
+---
+
+## 📱 Web Portal
+
+### Features
+- PC identification banner (when using custom configs)
+- External IP and last update timestamp
+- Password-protected access (SHA-256)
+- Service buttons (redirect to http://IP:PORT)
+- Multiple RDP buttons (downloads appropriate .rdp file)
+- Mobile-responsive design
+
+### User Flow
+1. Visit portal URL
+2. See PC name, external IP, last update
+3. Click service or RDP button
+4. Enter password
+5. Access service or download RDP file
+
+---
+
+## 🔄 Operation
+
+### Startup Sequence
+1. Check for existing instance (exit if found)
+2. Load PC-specific config or `config.xml`
+3. Update external IP
+4. Publish portal immediately (all RDP files + HTML)
+5. Minimize to system tray
+6. Start monitors and timers
+
+### Background Tasks
+- **Every 5 seconds:** Internet check, IP updates, dashboard refresh
+- **Every 5 minutes:** Silent auto-publish (configurable)
+- **On demand:** Manual publish with success/error dialog
+
+---
+
+## 🐛 Troubleshooting
+
+**App doesn't appear:** Check system tray for 🏠 icon
+
+**"Already running" message:** App is in tray - double-click icon to show
+
+**Wrong config loaded:** Check dashboard "Config File" - should match PC name (e.g., `SERVER-01.xml`)
+
+**VPC RDP not working:**
+- Verify router forwards ports to host PC
+- Run `netsh interface portproxy show all` on host
+- Check Windows Firewall allows ports
+- Ensure VPC has RDP enabled
+
+**FTP fails:** Check error dialog (credentials, path, connection)
+
+**Activity light gray:** No internet - check network
+
+---
+
+## 💡 Tips
+
+### Multi-PC Strategy
+- Create `[PCNAME].xml` for each computer
+- Use unique filenames: `server01.html`, `desktop.html`
+- PC name appears on portal automatically
+
+### VPC Best Practices
+- Sequential ports (3389, 3390, 3391...)
+- Descriptive names ("Host PC", "VPC - WinServer")
+- Disable unused targets
+
+### Security
+- Strong passwords for portal and Windows accounts
+- Consider non-standard RDP ports (security through obscurity)
+- Use FTPS if available
+
+### Performance
+- 300s publish frequency recommended
+- Remote path must end with `/`
+- FTP timeout: 30 seconds per file
+
+---
+
+## 📊 System Requirements
+
+- Windows 10/11
+- .NET 8.0 Runtime
+- Internet connection
+- FTP hosting
+- Router with port forwarding capability
+
+---
+
+## 📦 Included Files
+
+- `HomeNet Lab.exe` - Main application
+- `config.xml` - Default configuration template
+- `SplashLab.png`, `HomeNetLab.ico`, `HomeNetLab.png` - Branding assets
+
+---
+
+## 🎉 Features at a Glance
+
+✅ Auto-loads PC-specific configs  
+✅ Silent tray startup  
+✅ Instant publish on launch  
+✅ Multi-RDP targets (Host + VPCs)  
+✅ Port forwarding wizard (clipboard copy)  
+✅ Single instance enforcement  
+✅ Live monitoring (5-second intervals)  
+✅ Auto-publishing (configurable)  
+✅ SHA-256 password protection  
+✅ Bing wallpaper backgrounds  
+✅ Dark theme UI  
+✅ Mobile-friendly portals  
+
+---
+
+**Version:** 1.1  
 **Platform:** Windows 10/11  
-**Framework:** .NET 8.0
+**Framework:** .NET 8.0  
+**GitHub:** https://github.com/brucemurphy/HomeNet-Lab
+
+Built with WPF, VB.NET, and ❤️

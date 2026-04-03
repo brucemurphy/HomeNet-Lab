@@ -17,7 +17,7 @@
     <!-- Remote filename for HTML portal (default: index.html) -->
     <HtmlFileName>index.html</HtmlFileName>
 
-    <!-- Remote filename for RDP file (default: HomeNetwork.rdp) -->
+    <!-- Legacy: Single RDP file (only used if RDPTargets section not present) -->
     <RdpFileName>HomeNetwork.rdp</RdpFileName>
   </FTP>
 
@@ -26,6 +26,33 @@
     <!-- This will be SHA-256 hashed - use a strong password! -->
     <AccessPassword>YourSecurePassword123</AccessPassword>
   </Security>
+
+  <RDPTargets>
+    <!-- Multiple RDP targets - useful for host PC + virtual PCs -->
+    <!-- Each target creates a separate RDP button on the web portal -->
+    <!-- Requires router port forwarding to host, then host port forwarding to VPCs -->
+
+    <Target>
+      <Name>Host PC</Name>
+      <Port>3389</Port>
+      <FileName>host.rdp</FileName>
+      <Enabled>true</Enabled>
+    </Target>
+
+    <Target>
+      <Name>VPC - Windows Server</Name>
+      <Port>3390</Port>
+      <FileName>vpc-server.rdp</FileName>
+      <Enabled>true</Enabled>
+    </Target>
+
+    <Target>
+      <Name>VPC - Development</Name>
+      <Port>3391</Port>
+      <FileName>vpc-dev.rdp</FileName>
+      <Enabled>false</Enabled>
+    </Target>
+  </RDPTargets>
 
   <Services>
     <!-- You can add multiple services here -->

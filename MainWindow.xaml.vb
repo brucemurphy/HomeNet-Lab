@@ -4,6 +4,7 @@ Imports System.Net.Http
 Imports System.Runtime.InteropServices
 Imports System.Text
 Imports System.Threading
+Imports System.ComponentModel
 Imports System.Windows.Interop
 Imports System.Windows.Media.Effects
 Imports System.Windows.Threading
@@ -45,6 +46,23 @@ Class MainWindow
         Await SetBingWallpaperAsync()
         StartInternetConnectionMonitor()
         StartAutoPublishTimer()
+
+        ' Perform immediate publish on startup
+        isManualPublish = False ' Silent publish, no popups
+        Await PublishWebPortalAsync()
+
+        ' Start minimized to system tray
+        Me.WindowState = WindowState.Minimized
+        Me.Hide()
+        notifyIcon.Visible = True
+    End Sub
+
+    Private Sub MainWindow_Closing(sender As Object, e As ComponentModel.CancelEventArgs) Handles Me.Closing
+        ' Clean up system tray icon
+        If notifyIcon IsNot Nothing Then
+            notifyIcon.Visible = False
+            notifyIcon.Dispose()
+        End If
     End Sub
 
     Private Sub MainWindow_StateChanged(sender As Object, e As EventArgs) Handles Me.StateChanged
@@ -57,7 +75,28 @@ Class MainWindow
 
     Private Sub InitializeSystemTray()
         notifyIcon = New System.Windows.Forms.NotifyIcon()
-        notifyIcon.Icon = System.Drawing.SystemIcons.Application
+
+        ' Load the application icon - try embedded resource first, then file, then fallback
+        Try
+            ' Try to load from embedded resource
+            Dim iconStream = Application.GetResourceStream(New Uri("pack://application:,,,/HomeNetLab.ico"))
+            If iconStream IsNot Nothing Then
+                notifyIcon.Icon = New System.Drawing.Icon(iconStream.Stream)
+            Else
+                ' Try to load from file
+                Dim iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "HomeNetLab.ico")
+                If File.Exists(iconPath) Then
+                    notifyIcon.Icon = New System.Drawing.Icon(iconPath)
+                Else
+                    ' Fallback to embedded icon from application executable
+                    notifyIcon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location)
+                End If
+            End If
+        Catch
+            ' If all else fails, use system icon
+            notifyIcon.Icon = System.Drawing.SystemIcons.Application
+        End Try
+
         notifyIcon.Text = "HomeNet Lab"
         notifyIcon.Visible = False
 
@@ -103,6 +142,128 @@ Class MainWindow
 
     Private Sub ExitMenuItem_Click(sender As Object, e As RoutedEventArgs)
         Application.Current.Shutdown()
+    End Sub
+
+    Private Sub SetupPortForwardingMenuItem_Click(sender As Object, e As RoutedEventArgs)
+        Dim setupDialog As New StringBuilder()
+        setupDialog.AppendLine("🔧 Port Forwarding Setup Wizard")
+        setupDialog.AppendLine(New String("="c, 50))
+        setupDialog.AppendLine()
+        setupDialog.AppendLine("For RDP access to work from outside your network, you need:")
+        setupDialog.AppendLine()
+        setupDialog.AppendLine("1️⃣ ROUTER PORT FORWARDING (External → Host PC)")
+        setupDialog.AppendLine("   Configure these rules on your router:")
+        setupDialog.AppendLine()
+
+        ' Get RDP targets from config
+        Dim rdpTargets As New List(Of (Name As String, Port As Integer))
+        Try
+            If config IsNot Nothing Then
+                Dim targetNodes = config.SelectNodes("//RDPTargets/Target")
+                If targetNodes IsNot Nothing AndAlso targetNodes.Count > 0 Then
+                    For Each targetNode As XmlNode In targetNodes
+                        Dim name = targetNode.SelectSingleNode("Name")?.InnerText
+                        Dim portStr = targetNode.SelectSingleNode("Port")?.InnerText
+                        Dim enabled = targetNode.SelectSingleNode("Enabled")?.InnerText
+
+                        If enabled?.ToLower() = "true" AndAlso Not String.IsNullOrEmpty(name) AndAlso Not String.IsNullOrEmpty(portStr) Then
+                            Dim port As Integer
+                            If Integer.TryParse(portStr, port) Then
+                                rdpTargets.Add((name, port))
+                            End If
+                        End If
+                    Next
+                End If
+            End If
+        Catch
+        End Try
+
+        If rdpTargets.Count = 0 Then
+            rdpTargets.Add(("Remote Desktop", 3389))
+        End If
+
+        ' Build PowerShell commands for clipboard
+        Dim clipboardCommands As New StringBuilder()
+
+        ' Show router rules
+        For Each target In rdpTargets
+            setupDialog.AppendLine($"   Port {target.Port} (TCP) → {GetLocalIP()}:{target.Port}")
+            setupDialog.AppendLine($"   ({target.Name})")
+            setupDialog.AppendLine()
+        Next
+
+        setupDialog.AppendLine("2️⃣ HOST PC PORT FORWARDING (For VPCs only)")
+        setupDialog.AppendLine("   Run these commands AS ADMINISTRATOR on your host PC:")
+        setupDialog.AppendLine()
+
+        Dim hasVpcs As Boolean = False
+        For Each target In rdpTargets
+            If target.Port <> 3389 Then
+                hasVpcs = True
+                Dim vpcLocalIp = "192.168.x.x"  ' Placeholder
+                Dim command = $"netsh interface portproxy add v4tov4 listenport={target.Port} connectaddress={vpcLocalIp} connectport=3389"
+                setupDialog.AppendLine($"   {command}")
+                setupDialog.AppendLine($"   ({target.Name} - Update {vpcLocalIp} with actual VPC IP)")
+                setupDialog.AppendLine()
+
+                ' Add to clipboard commands
+                clipboardCommands.AppendLine($"# {target.Name}")
+                clipboardCommands.AppendLine($"{command.Replace(vpcLocalIp, "192.168.100." & (target.Port - 3389))}")
+                clipboardCommands.AppendLine()
+            End If
+        Next
+
+        If Not hasVpcs Then
+            setupDialog.AppendLine("   ✅ Not needed - Only host PC configured")
+            setupDialog.AppendLine()
+        Else
+            ' Add utility commands to clipboard
+            clipboardCommands.AppendLine("# View all current rules")
+            clipboardCommands.AppendLine("netsh interface portproxy show all")
+            clipboardCommands.AppendLine()
+            clipboardCommands.AppendLine("# Delete a rule (example)")
+            clipboardCommands.AppendLine("# netsh interface portproxy delete v4tov4 listenport=3390")
+        End If
+
+        setupDialog.AppendLine("3️⃣ VIEW CURRENT PORT PROXY RULES")
+        setupDialog.AppendLine("   netsh interface portproxy show all")
+        setupDialog.AppendLine()
+        setupDialog.AppendLine("4️⃣ REMOVE PORT PROXY RULES (if needed)")
+        setupDialog.AppendLine("   netsh interface portproxy delete v4tov4 listenport=3390")
+        setupDialog.AppendLine()
+        setupDialog.AppendLine("📋 Your Configuration:")
+        setupDialog.AppendLine($"   Host PC: {GetPCName()}")
+        setupDialog.AppendLine($"   Local IP: {GetLocalIP()}")
+        setupDialog.AppendLine($"   External IP: {externalIP}")
+        setupDialog.AppendLine()
+
+        If hasVpcs Then
+            setupDialog.AppendLine("💡 TIP: Click YES to copy PowerShell commands to clipboard")
+            setupDialog.AppendLine("   Then paste into PowerShell (run as Administrator)")
+            setupDialog.AppendLine()
+            setupDialog.AppendLine("Copy commands to clipboard?")
+        Else
+            setupDialog.AppendLine("No VPCs configured - only host PC RDP enabled.")
+            Return
+        End If
+
+        Dim result = MessageBox.Show(setupDialog.ToString(), "Port Forwarding Setup", MessageBoxButton.YesNo, MessageBoxImage.Information)
+
+        If result = MessageBoxResult.Yes AndAlso hasVpcs Then
+            Try
+                Clipboard.SetText(clipboardCommands.ToString())
+                MessageBox.Show("✅ Commands copied to clipboard!" & Environment.NewLine & Environment.NewLine &
+                               "Next steps:" & Environment.NewLine &
+                               "1. Open PowerShell as Administrator" & Environment.NewLine &
+                               "2. Paste commands (Ctrl+V)" & Environment.NewLine &
+                               "3. Update VPC IP addresses in commands" & Environment.NewLine &
+                               "4. Run commands" & Environment.NewLine &
+                               "5. Verify with: netsh interface portproxy show all",
+                               "Commands Copied", MessageBoxButton.OK, MessageBoxImage.Information)
+            Catch ex As Exception
+                MessageBox.Show($"Could not copy to clipboard:{Environment.NewLine}{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error)
+            End Try
+        End If
     End Sub
 
     Private Async Sub PublishWebPortalMenuItem_Click(sender As Object, e As RoutedEventArgs)
@@ -476,6 +637,29 @@ Class MainWindow
                                   ConfigServiceName.Text = If(serviceNames.Count > 0, String.Join(", ", serviceNames), "Not configured")
                                   ConfigServicePort.Text = If(servicePorts.Count > 0, String.Join(", ", servicePorts), "Not configured")
 
+                                  ' RDP Target Configuration - Get all enabled RDP targets
+                                  Dim rdpTargetNames As New List(Of String)
+
+                                  Try
+                                      If config IsNot Nothing Then
+                                          Dim targetNodes = config.SelectNodes("//RDPTargets/Target")
+                                          If targetNodes IsNot Nothing AndAlso targetNodes.Count > 0 Then
+                                              For Each targetNode As XmlNode In targetNodes
+                                                  Dim name = targetNode.SelectSingleNode("Name")?.InnerText
+                                                  Dim port = targetNode.SelectSingleNode("Port")?.InnerText
+                                                  Dim enabled = targetNode.SelectSingleNode("Enabled")?.InnerText
+
+                                                  If enabled?.ToLower() = "true" AndAlso Not String.IsNullOrEmpty(name) AndAlso Not String.IsNullOrEmpty(port) Then
+                                                      rdpTargetNames.Add($"{name}:{port}")
+                                                  End If
+                                              Next
+                                          End If
+                                      End If
+                                  Catch
+                                  End Try
+
+                                  ConfigRdpTargets.Text = If(rdpTargetNames.Count > 0, String.Join(", ", rdpTargetNames), "Not configured")
+
                                   ' Auto-Publish Configuration
                                   Dim autoPublishEnabled = GetConfigValue("//AutoPublish/Enabled")
                                   Dim frequency = GetConfigValue("//AutoPublish/FrequencySeconds")
@@ -569,7 +753,7 @@ Class MainWindow
         End Try
     End Function
 
-    Public Function GenerateRdpFile() As String
+    Public Function GenerateRdpFile(Optional rdpPort As Integer = 3389) As String
         Dim rdpContent As New StringBuilder()
         rdpContent.AppendLine("screen mode id:i:2")
         rdpContent.AppendLine("use multimon:i:0")
@@ -595,7 +779,7 @@ Class MainWindow
         rdpContent.AppendLine("disable themes:i:0")
         rdpContent.AppendLine("disable cursor setting:i:0")
         rdpContent.AppendLine("bitmapcachepersistenable:i:1")
-        rdpContent.AppendLine($"full address:s:{externalIP}")
+        rdpContent.AppendLine($"full address:s:{externalIP}:{rdpPort}")
         rdpContent.AppendLine("audiomode:i:0")
         rdpContent.AppendLine("redirectprinters:i:1")
         rdpContent.AppendLine("redirectlocation:i:0")
@@ -624,121 +808,114 @@ Class MainWindow
         Return rdpContent.ToString()
     End Function
 
-    Public Async Function UploadRdpToFtpAsync(Optional showBlink As Boolean = True) As Task(Of Boolean)
+    Public Async Function UploadAllRdpFilesAsync(Optional showBlink As Boolean = True) As Task(Of Boolean)
+        Dim allSuccessful As Boolean = True
         Dim ftpServer As String = ""
-        Dim rdpFileName As String = ""
 
         Try
-            If showBlink Then ShowPublishingStatus("Preparing...", "Reading configuration")
+            If showBlink Then ShowPublishingStatus("Preparing...", "Reading RDP configuration")
 
             ftpServer = GetConfigValue("//FTP/Server")
             Dim ftpUsername = GetConfigValue("//FTP/Username")
             Dim ftpPassword = GetConfigValue("//FTP/Password")
             Dim remotePath = GetConfigValue("//FTP/RemotePath")
-            rdpFileName = GetConfigValue("//FTP/RdpFileName")
-
-            ' Use default filename if not specified
-            If String.IsNullOrEmpty(rdpFileName) Then
-                rdpFileName = "HomeNetwork.rdp"
-            End If
 
             If String.IsNullOrEmpty(ftpServer) Then
-                lastFtpError = "FTP Server address is not configured in config.xml"
+                lastFtpError = "FTP Server address is not configured"
                 If showBlink Then UpdateIPDisplay()
                 Return False
             End If
 
             If String.IsNullOrEmpty(ftpUsername) Then
-                lastFtpError = "FTP Username is not configured in config.xml"
+                lastFtpError = "FTP Username is not configured"
                 If showBlink Then UpdateIPDisplay()
                 Return False
             End If
 
-            ' Remove ftp:// prefix if present (we'll add it ourselves)
+            ' Remove ftp:// prefix if present
             If ftpServer.StartsWith("ftp://", StringComparison.OrdinalIgnoreCase) Then
                 ftpServer = ftpServer.Substring(6)
             End If
 
-            If showBlink Then StartUploadBlink()
-            If showBlink Then ShowPublishingStatus("Uploading...", $"RDP file: {rdpFileName}")
+            ' Get all enabled RDP targets
+            Dim rdpTargets As New List(Of (Name As String, Port As Integer, FileName As String))
+            Try
+                If config IsNot Nothing Then
+                    Dim targetNodes = config.SelectNodes("//RDPTargets/Target")
+                    If targetNodes IsNot Nothing AndAlso targetNodes.Count > 0 Then
+                        For Each targetNode As XmlNode In targetNodes
+                            Dim name = targetNode.SelectSingleNode("Name")?.InnerText
+                            Dim portStr = targetNode.SelectSingleNode("Port")?.InnerText
+                            Dim fileName = targetNode.SelectSingleNode("FileName")?.InnerText
+                            Dim enabled = targetNode.SelectSingleNode("Enabled")?.InnerText
 
-            Dim rdpContent = GenerateRdpFile()
-            Dim ftpUrl = $"ftp://{ftpServer}{remotePath}{rdpFileName}"
+                            If enabled?.ToLower() = "true" AndAlso Not String.IsNullOrEmpty(name) AndAlso Not String.IsNullOrEmpty(portStr) AndAlso Not String.IsNullOrEmpty(fileName) Then
+                                Dim port As Integer
+                                If Integer.TryParse(portStr, port) Then
+                                    rdpTargets.Add((name, port, fileName))
+                                End If
+                            End If
+                        Next
+                    Else
+                        ' No RDPTargets section, use legacy single RDP file
+                        Dim legacyFileName = GetConfigValue("//FTP/RdpFileName")
+                        If String.IsNullOrEmpty(legacyFileName) Then legacyFileName = "HomeNetwork.rdp"
+                        rdpTargets.Add(("Remote Desktop", 3389, legacyFileName))
+                    End If
+                End If
+            Catch
+                ' Fallback to default
+                rdpTargets.Add(("Remote Desktop", 3389, "HomeNetwork.rdp"))
+            End Try
 
-            Dim request As FtpWebRequest = CType(WebRequest.Create(ftpUrl), FtpWebRequest)
-            request.Method = WebRequestMethods.Ftp.UploadFile
-            request.Credentials = New NetworkCredential(ftpUsername, ftpPassword)
-            request.Timeout = 30000 ' 30 seconds
-            request.KeepAlive = False
-
-            Dim byteArray As Byte() = Encoding.UTF8.GetBytes(rdpContent)
-            request.ContentLength = byteArray.Length
-
-            Using requestStream As Stream = request.GetRequestStream()
-                Await requestStream.WriteAsync(byteArray, 0, byteArray.Length)
-            End Using
-
-            Using response As FtpWebResponse = CType(request.GetResponse(), FtpWebResponse)
-                ' Upload successful
-                lastFtpError = "" ' Clear any previous errors
-            End Using
-
-            If showBlink Then StopUploadBlink()
-            Return True
-        Catch webEx As WebException
-            If showBlink Then StopUploadBlink()
-            If showBlink Then UpdateIPDisplay()
-
-            Dim errorMsg As New StringBuilder()
-            errorMsg.AppendLine($"RDP File Upload Failed: {If(String.IsNullOrEmpty(rdpFileName), "HomeNetwork.rdp", rdpFileName)}")
-            errorMsg.AppendLine()
-
-            If webEx.Response IsNot Nothing Then
-                Dim ftpResponse As FtpWebResponse = CType(webEx.Response, FtpWebResponse)
-                errorMsg.AppendLine($"FTP Status Code: {ftpResponse.StatusCode}")
-                errorMsg.AppendLine($"FTP Status: {ftpResponse.StatusDescription}")
+            If rdpTargets.Count = 0 Then
+                rdpTargets.Add(("Remote Desktop", 3389, "HomeNetwork.rdp"))
             End If
 
-            Select Case webEx.Status
-                Case WebExceptionStatus.ConnectFailure
-                    errorMsg.AppendLine("Cannot connect to FTP server")
-                    errorMsg.AppendLine($"Server: {GetConfigValue("//FTP/Server")}")
-                    errorMsg.AppendLine("Check: Server address, firewall, internet connection")
+            If showBlink Then StartUploadBlink()
 
-                Case WebExceptionStatus.NameResolutionFailure
-                    errorMsg.AppendLine("Cannot resolve FTP server hostname")
-                    errorMsg.AppendLine($"Server: {GetConfigValue("//FTP/Server")}")
-                    errorMsg.AppendLine("Check: Server address spelling, DNS settings")
+            ' Upload each RDP file
+            For Each target In rdpTargets
+                If showBlink Then ShowPublishingStatus("Uploading...", $"RDP: {target.Name} (Port {target.Port})")
 
-                Case WebExceptionStatus.Timeout
-                    errorMsg.AppendLine("Connection timed out (30 seconds)")
-                    errorMsg.AppendLine("Check: Server is online, firewall settings")
+                Dim rdpContent = GenerateRdpFile(target.Port)
+                Dim ftpUrl = $"ftp://{ftpServer}{remotePath}{target.FileName}"
 
-                Case WebExceptionStatus.ProtocolError
-                    errorMsg.AppendLine("FTP Protocol Error")
-                    If webEx.Response IsNot Nothing Then
-                        Dim ftpResponse As FtpWebResponse = CType(webEx.Response, FtpWebResponse)
-                        If ftpResponse.StatusCode = FtpStatusCode.NotLoggedIn Then
-                            errorMsg.AppendLine("Authentication failed - Invalid username or password")
-                        ElseIf ftpResponse.StatusCode = FtpStatusCode.ActionNotTakenFileUnavailable Then
-                            errorMsg.AppendLine("Cannot access remote path")
-                            errorMsg.AppendLine($"Path: {GetConfigValue("//FTP/RemotePath")}")
-                            errorMsg.AppendLine("Check: Path exists and has write permissions")
-                        End If
-                    End If
+                Try
+                    Dim request As FtpWebRequest = CType(WebRequest.Create(ftpUrl), FtpWebRequest)
+                    request.Method = WebRequestMethods.Ftp.UploadFile
+                    request.Credentials = New NetworkCredential(ftpUsername, ftpPassword)
+                    request.Timeout = 30000
+                    request.KeepAlive = False
 
-                Case Else
-                    errorMsg.AppendLine($"Network Error: {webEx.Status}")
-                    errorMsg.AppendLine($"Message: {webEx.Message}")
-            End Select
+                    Dim byteArray As Byte() = Encoding.UTF8.GetBytes(rdpContent)
+                    request.ContentLength = byteArray.Length
 
-            lastFtpError = errorMsg.ToString()
-            Return False
+                    Using requestStream As Stream = request.GetRequestStream()
+                        Await requestStream.WriteAsync(byteArray, 0, byteArray.Length)
+                    End Using
+
+                    Using response As FtpWebResponse = CType(request.GetResponse(), FtpWebResponse)
+                        ' Upload successful
+                    End Using
+                Catch ex As Exception
+                    allSuccessful = False
+                    lastFtpError = $"Failed to upload {target.FileName}: {ex.Message}"
+                End Try
+
+                Await Task.Delay(100)
+            Next
+
+            If showBlink Then StopUploadBlink()
+
+            If Not allSuccessful AndAlso showBlink Then UpdateIPDisplay()
+
+            Return allSuccessful
 
         Catch ex As Exception
             If showBlink Then StopUploadBlink()
             If showBlink Then UpdateIPDisplay()
-            lastFtpError = $"Unexpected Error uploading RDP file:{Environment.NewLine}{ex.GetType().Name}: {ex.Message}"
+            lastFtpError = $"Unexpected Error uploading RDP files:{Environment.NewLine}{ex.GetType().Name}: {ex.Message}"
             Return False
         End Try
     End Function
@@ -766,6 +943,14 @@ Class MainWindow
             rdpFileName = "HomeNetwork.rdp"
         End If
 
+        ' Determine subtitle based on config file
+        Dim subtitle As String = "Secure Access Portal"
+        If loadedConfigFile <> "config.xml" AndAlso Not String.IsNullOrEmpty(loadedConfigFile) AndAlso loadedConfigFile <> "Not found" AndAlso loadedConfigFile <> "Error loading" Then
+            ' Using PC-specific config file, show PC name
+            Dim pcName = GetPCName()
+            subtitle = $"{pcName} • Secure Access Portal"
+        End If
+
         ' Get all services
         Dim services As New List(Of (Name As String, Url As String))
         Try
@@ -785,6 +970,37 @@ Class MainWindow
             End If
         Catch
         End Try
+
+        ' Get all RDP targets
+        Dim rdpTargets As New List(Of (Name As String, FileName As String))
+        Try
+            If config IsNot Nothing Then
+                Dim targetNodes = config.SelectNodes("//RDPTargets/Target")
+                If targetNodes IsNot Nothing AndAlso targetNodes.Count > 0 Then
+                    For Each targetNode As XmlNode In targetNodes
+                        Dim name = targetNode.SelectSingleNode("Name")?.InnerText
+                        Dim fileName = targetNode.SelectSingleNode("FileName")?.InnerText
+                        Dim enabled = targetNode.SelectSingleNode("Enabled")?.InnerText
+
+                        If enabled?.ToLower() = "true" AndAlso Not String.IsNullOrEmpty(name) AndAlso Not String.IsNullOrEmpty(fileName) Then
+                            rdpTargets.Add((name, fileName))
+                        End If
+                    Next
+                Else
+                    ' No RDPTargets section, use legacy single RDP
+                    Dim legacyFileName = GetConfigValue("//FTP/RdpFileName")
+                    If String.IsNullOrEmpty(legacyFileName) Then legacyFileName = "HomeNetwork.rdp"
+                    rdpTargets.Add(("Remote Desktop", legacyFileName))
+                End If
+            End If
+        Catch
+            ' Fallback to default
+            rdpTargets.Add(("Remote Desktop", "HomeNetwork.rdp"))
+        End Try
+
+        If rdpTargets.Count = 0 Then
+            rdpTargets.Add(("Remote Desktop", "HomeNetwork.rdp"))
+        End If
 
         Dim html As New StringBuilder()
         html.AppendLine("<!DOCTYPE html>")
@@ -936,7 +1152,7 @@ Class MainWindow
         html.AppendLine("<body>")
         html.AppendLine("    <div class=""container"">")
         html.AppendLine("        <h1>🏠 HomeNet Lab</h1>")
-        html.AppendLine("        <div class=""subtitle"">Secure Access Portal</div>")
+        html.AppendLine($"        <div class=""subtitle"">{subtitle}</div>")
         html.AppendLine("        ")
         html.AppendLine("        <div class=""info-card"">")
         html.AppendLine("            <div class=""info-row"">")
@@ -960,9 +1176,14 @@ Class MainWindow
             html.AppendLine("            </a>")
         Next
 
-        html.AppendLine($"            <a href=""#"" class=""btn btn-rdp"" onclick=""showPasswordModal('rdp'); return false;"">")
-        html.AppendLine("                🖥️ Remote Desktop Connection")
-        html.AppendLine("            </a>")
+        ' Add button for each enabled RDP target
+        For i As Integer = 0 To rdpTargets.Count - 1
+            Dim rdp = rdpTargets(i)
+            html.AppendLine($"            <a href=""#"" class=""btn btn-rdp"" onclick=""showPasswordModal('rdp{i}'); return false;"">")
+            html.AppendLine($"                🖥️ {rdp.Name}")
+            html.AppendLine("            </a>")
+        Next
+
         html.AppendLine("        </div>")
         html.AppendLine("        ")
         html.AppendLine("        <div class=""footer"">")
@@ -984,13 +1205,20 @@ Class MainWindow
         html.AppendLine("")
         html.AppendLine("    <script>")
         html.AppendLine($"        const CORRECT_PASSWORD_HASH = '{passwordHash}';")
-        html.AppendLine($"        const RDP_FILENAME = '{rdpFileName}';")
 
         ' Add all service URLs as JavaScript array
         html.AppendLine("        const SERVICE_URLS = [")
         For i As Integer = 0 To services.Count - 1
-            Dim comma = If(i < services.Count - 1, ",", "")
+    Dim comma = If(i < services.Count - 1, ",", "")
             html.AppendLine($"            '{services(i).Url}'{comma}")
+        Next
+        html.AppendLine("        ];")
+
+        ' Add all RDP filenames as JavaScript array
+        html.AppendLine("        const RDP_FILENAMES = [")
+        For i As Integer = 0 To rdpTargets.Count - 1
+    Dim comma = If(i < rdpTargets.Count - 1, ",", "")
+            html.AppendLine($"            '{rdpTargets(i).FileName}'{comma}")
         Next
         html.AppendLine("        ];")
 
@@ -1016,8 +1244,9 @@ Class MainWindow
         html.AppendLine("                if (currentAction.startsWith('service')) {")
         html.AppendLine("                    const serviceIndex = parseInt(currentAction.replace('service', ''));")
         html.AppendLine("                    window.location.href = SERVICE_URLS[serviceIndex];")
-        html.AppendLine("                } else if (currentAction === 'rdp') {")
-        html.AppendLine("                    downloadRdpFile();")
+        html.AppendLine("                } else if (currentAction.startsWith('rdp')) {")
+        html.AppendLine("                    const rdpIndex = parseInt(currentAction.replace('rdp', ''));")
+        html.AppendLine("                    downloadRdpFile(RDP_FILENAMES[rdpIndex]);")
         html.AppendLine("                }")
         html.AppendLine("                closePasswordModal();")
         html.AppendLine("            } else {")
@@ -1035,15 +1264,15 @@ Class MainWindow
         html.AppendLine("            return hashHex;")
         html.AppendLine("        }")
         html.AppendLine("")
-        html.AppendLine("        function downloadRdpFile() {")
+        html.AppendLine("        function downloadRdpFile(filename) {")
         html.AppendLine("            // Verify file exists on server before downloading")
-        html.AppendLine("            fetch(RDP_FILENAME, { method: 'HEAD' })")
+        html.AppendLine("            fetch(filename, { method: 'HEAD' })")
         html.AppendLine("                .then(response => {")
         html.AppendLine("                    if (response.ok) {")
         html.AppendLine("                        // File exists, proceed with download")
         html.AppendLine("                        const link = document.createElement('a');")
-        html.AppendLine("                        link.href = RDP_FILENAME;")
-        html.AppendLine("                        link.download = RDP_FILENAME;")
+        html.AppendLine("                        link.href = filename;")
+        html.AppendLine("                        link.download = filename;")
         html.AppendLine("                        document.body.appendChild(link);")
         html.AppendLine("                        link.click();")
         html.AppendLine("                        document.body.removeChild(link);")
@@ -1054,8 +1283,8 @@ Class MainWindow
         html.AppendLine("                .catch(error => {")
         html.AppendLine("                    // Fallback: try download anyway")
         html.AppendLine("                    const link = document.createElement('a');")
-        html.AppendLine("                    link.href = RDP_FILENAME;")
-        html.AppendLine("                    link.download = RDP_FILENAME;")
+        html.AppendLine("                    link.href = filename;")
+        html.AppendLine("                    link.download = filename;")
         html.AppendLine("                    document.body.appendChild(link);")
         html.AppendLine("                    link.click();")
         html.AppendLine("                    document.body.removeChild(link);")
@@ -1090,9 +1319,9 @@ Class MainWindow
             Await UpdateExternalIPAsync()
             Await Task.Delay(300) ' Brief pause for visual feedback
 
-            ShowPublishingStatus("Publishing...", "Uploading RDP file")
-            ' Upload RDP file first (without separate blink control)
-            Dim rdpSuccess = Await UploadRdpToFtpAsync(False)
+            ShowPublishingStatus("Publishing...", "Uploading RDP files")
+            ' Upload all RDP files (without separate blink control)
+            Dim rdpSuccess = Await UploadAllRdpFilesAsync(False)
             If Not rdpSuccess Then
                 StopUploadBlink()
                 ShowPublishingStatus("Failed", "RDP upload error")
