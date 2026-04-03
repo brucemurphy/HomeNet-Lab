@@ -1,0 +1,56 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>HomeNet_Lab</RootNamespace>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>HomeNetLab.ico</ApplicationIcon>
+    <PackageIcon>HomeNetLab.png</PackageIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="MyHomeIP\**" />
+    <EmbeddedResource Remove="MyHomeIP\**" />
+    <None Remove="MyHomeIP\**" />
+    <Page Remove="MyHomeIP\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="HomeNetLab.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Import Include="System.Windows" />
+    <Import Include="System.Windows.Controls" />
+    <Import Include="System.Windows.Data" />
+    <Import Include="System.Windows.Documents" />
+    <Import Include="System.Windows.Input" />
+    <Import Include="System.Windows.Media" />
+    <Import Include="System.Windows.Media.Imaging" />
+    <Import Include="System.Windows.Navigation" />
+    <Import Include="System.Windows.Shapes" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="MyHomeIP\MyHomeIP.vbproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<Resource Include="HomeNetLab.png" />
+	<Resource Include="SplashLab.png">
+	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	</Resource>
+  </ItemGroup>
+
+  <ItemGroup>
+	  <None Update="config.xml">
+		<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="HomeNetLab.png">
+	  <Pack>True</Pack>
+	  <PackagePath>\</PackagePath>
+	</None>
+  </ItemGroup>
+</Project>

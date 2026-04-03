@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <FTP>
+    <!-- Your FTP server address (can include ftp:// or not - both work) -->
+    <!-- Example: ftp.yoursite.com OR ftp://ftp.yoursite.com -->
+    <Server>ftp://your-ftp-server.com</Server>
+
+    <!-- Your FTP username -->
+    <Username>your-ftp-username</Username>
+
+    <!-- Your FTP password -->
+    <Password>your-ftp-password</Password>
+
+    <!-- Remote path where files will be uploaded (must end with /) -->
+    <RemotePath>/public_html/</RemotePath>
+
+    <!-- Remote filename for HTML portal (default: index.html) -->
+    <HtmlFileName>index.html</HtmlFileName>
+
+    <!-- Remote filename for RDP file (default: HomeNetwork.rdp) -->
+    <RdpFileName>HomeNetwork.rdp</RdpFileName>
+  </FTP>
+
+  <Security>
+    <!-- Password for accessing Emby and RDP from web portal -->
+    <!-- This will be SHA-256 hashed - use a strong password! -->
+    <AccessPassword>YourSecurePassword123</AccessPassword>
+  </Security>
+
+  <Services>
+    <!-- You can add multiple services here -->
+    <!-- Each service creates a button on the web portal -->
+    <!-- URL built as http://[ExternalIP]:[Port] -->
+
+    <Service>
+      <Name>Emby Server</Name>
+      <Port>8096</Port>
+      <Enabled>true</Enabled>
+    </Service>
+
+    <Service>
+      <Name>Plex Server</Name>
+      <Port>32400</Port>
+      <Enabled>false</Enabled>
+    </Service>
+
+    <Service>
+      <Name>Home Assistant</Name>
+      <Port>8123</Port>
+      <Enabled>false</Enabled>
+    </Service>
+  </Services>
+
+  <AutoPublish>
+    <!-- Enable automatic publishing of web portal (true/false) -->
+    <Enabled>true</Enabled>
+
+    <!-- Frequency in seconds (default: 300 = 5 minutes) -->
+    <!-- Minimum: 60 seconds (1 minute) -->
+    <!-- Recommended: 300 seconds (5 minutes) for typical use -->
+    <FrequencySeconds>300</FrequencySeconds>
+  </AutoPublish>
+</Configuration>
