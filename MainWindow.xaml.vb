@@ -33,6 +33,10 @@ Class MainWindow
     Private servicesCollection As New ObservableCollection(Of ServiceItem)
     Private rdpTargetsCollection As New ObservableCollection(Of RdpTargetItem)
 
+    ' Bing wallpaper refresh
+    Private _wallpaperRefreshTimer As DispatcherTimer
+    Private _lastWallpaperUpdate As DateTime = DateTime.MinValue
+
     Private Const DwmwaUseImmersiveDarkMode As Integer = 20
 
     <DllImport("dwmapi.dll", PreserveSig:=True)>
@@ -51,6 +55,7 @@ Class MainWindow
         Await SetBingWallpaperAsync()
         StartInternetConnectionMonitor()
         StartAutoPublishTimer()
+        StartWallpaperRefreshTimer()
 
         ' Perform immediate publish on startup
         isManualPublish = False ' Silent publish, no popups
@@ -900,8 +905,21 @@ Class MainWindow
                                   Catch
                                   End Try
 
-                                  ConfigRdpTargets.Text = If(rdpTargetNames.Count > 0, String.Join(", ", rdpTargetNames), "Not configured")
-                                  ConfigRdpPorts.Text = If(rdpTargetPorts.Count > 0, String.Join(", ", rdpTargetPorts), "Not configured")
+                                  ' Display RDP targets
+                                  ' Show "Remote Connection" if no enabled targets (assumes default port 3389)
+                                  If rdpTargetNames.Count = 0 Then
+                                      ' No enabled targets - assume default RDP on 3389
+                                      ConfigRdpTargets.Text = "Remote Connection"
+                                      ConfigRdpPorts.Text = "3389"
+                                  ElseIf rdpTargetNames.Count = 1 AndAlso rdpTargetPorts.Count = 1 AndAlso rdpTargetPorts(0) = "3389" Then
+                                      ' Single target on standard port
+                                      ConfigRdpTargets.Text = "Remote Connection"
+                                      ConfigRdpPorts.Text = "3389"
+                                  Else
+                                      ' Multiple targets or non-standard port
+                                      ConfigRdpTargets.Text = String.Join(", ", rdpTargetNames)
+                                      ConfigRdpPorts.Text = String.Join(", ", rdpTargetPorts)
+                                  End If
 
                                   ' Auto-Publish Configuration
                                   Dim autoPublishEnabled = GetConfigValue("//AutoPublish/Enabled")
@@ -985,6 +1003,24 @@ Class MainWindow
         Catch ex As Exception
             ' Auto-publish is optional, don't crash if it fails
         End Try
+    End Sub
+
+    Private Sub StartWallpaperRefreshTimer()
+        ' Refresh Bing wallpaper daily (checks every hour for 24+ hour interval)
+        _wallpaperRefreshTimer = New DispatcherTimer With {.Interval = TimeSpan.FromHours(1)}
+        AddHandler _wallpaperRefreshTimer.Tick, Async Sub()
+                                                     ' Check if it's been at least 24 hours since last update
+                                                     Dim hoursSinceUpdate = (DateTime.Now - _lastWallpaperUpdate).TotalHours
+                                                     If hoursSinceUpdate >= 24 Then
+                                                         Dim isConnected = Await IsInternetAvailableAsync()
+                                                         If isConnected Then
+                                                             Await SetBingWallpaperAsync()
+                                                             _lastWallpaperUpdate = DateTime.Now
+                                                         End If
+                                                     End If
+                                                 End Sub
+        _wallpaperRefreshTimer.Start()
+        _lastWallpaperUpdate = DateTime.Now ' Mark initial load time
     End Sub
 
     Private Async Function GetExternalIPAsync() As Task(Of String)

@@ -23,9 +23,6 @@
 
   <ItemGroup>
     <Content Include="HomeNetLab.ico" />
-    <Content Include="SERVER-01.xml">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
   <ItemGroup>

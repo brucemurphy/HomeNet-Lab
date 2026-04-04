@@ -117,6 +117,7 @@ Edit `config.xml` or create `[PCNAME].xml` for PC-specific settings:
 - **IP Updates:** External and local IP auto-refresh
 - **Activity Light:** Visual indicator (green=connected, blinking=uploading, gray=offline)
 - **Live Dashboard:** Real-time config and status display
+- **Daily Wallpaper Refresh:** Bing wallpaper updates automatically every 24 hours
 
 ---
 
@@ -219,7 +220,14 @@ netsh interface portproxy show all
 ```
 
 ### Step 3: Configure App
-Add RDP targets (see `SERVER-01.xml` example):
+**Using the GUI Editor (Recommended):**
+1. Open **File → Edit Config.xml**
+2. Click **➕ Add** to add your RDP targets
+3. Configure name, port, and filename for each target
+4. Click **💾 Save**
+
+**Or Edit XML Manually:**  
+See `TEMPLATE-PCNAME.xml` for a complete example with multiple RDP targets:
 ```xml
 <RDPTargets>
   <Target><Name>Host PC</Name><Port>3389</Port><FileName>host.rdp</FileName><Enabled>true</Enabled></Target>
@@ -394,6 +402,7 @@ Access via **File → Setup Port Forwarding...**
 
 ### Background Tasks
 - **Every 5 seconds:** Internet check, IP updates, dashboard refresh
+- **Every 1 hour:** Check if Bing wallpaper needs refresh (updates after 24 hours)
 - **Every 5 minutes:** Silent auto-publish (configurable)
 - **On demand:** Manual publish with success/error dialog
 
@@ -422,7 +431,8 @@ Access via **File → Setup Port Forwarding...**
 ## 💡 Tips
 
 ### Multi-PC Strategy
-- Create `[PCNAME].xml` for each computer
+- Use the config editor and check "Save as PC-specific config"
+- Or manually create `[PCNAME].xml` for each computer (see `TEMPLATE-PCNAME.xml` for example)
 - Use unique filenames: `server01.html`, `desktop.html`
 - PC name appears on portal automatically
 
@@ -456,8 +466,11 @@ Access via **File → Setup Port Forwarding...**
 ## 📦 Included Files
 
 - `HomeNet Lab.exe` - Main application
-- `config.xml` - Default configuration template
+- `config.xml` - Default configuration (edit this or use GUI editor)
+- `TEMPLATE-PCNAME.xml` - Example PC-specific config (reference only)
 - `SplashLab.png`, `HomeNetLab.ico`, `HomeNetLab.png` - Branding assets
+
+**Note:** `TEMPLATE-PCNAME.xml` is just an example. The app only uses `config.xml` or auto-detects `[YOURPCNAME].xml` if it exists.
 
 ---
 
@@ -473,8 +486,9 @@ Access via **File → Setup Port Forwarding...**
 ✅ Single instance enforcement  
 ✅ Live monitoring (5-second intervals)  
 ✅ Auto-publishing (configurable)  
+✅ **Daily Bing wallpaper refresh**  
 ✅ SHA-256 password protection  
-✅ Bing wallpaper backgrounds  
+✅ Bing wallpaper backgrounds
 ✅ **Dark theme UI** with rounded buttons  
 ✅ Mobile-friendly portals  
 ✅ **Separate port displays** for services & RDP  
