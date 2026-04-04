@@ -68,6 +68,8 @@
         <!-- Menu Bar -->
         <Menu DockPanel.Dock="Top" Background="{StaticResource MenuBackground}" BorderThickness="0">
             <MenuItem Header="_File" Foreground="{StaticResource MenuForeground}">
+                <MenuItem Header="_Edit Config.xml" Click="EditConfigMenuItem_Click"/>
+                <Separator Background="#FF3E3E42" Height="1" Margin="0"/>
                 <MenuItem Header="_Publish Web Portal" Click="PublishWebPortalMenuItem_Click"/>
                 <Separator Background="#FF3E3E42" Height="1" Margin="0"/>
                 <MenuItem Header="_Setup Port Forwarding..." Click="SetupPortForwardingMenuItem_Click"/>
@@ -78,6 +80,79 @@
 
         <!-- Main Content Area (empty for template) -->
         <Grid>
+
+            <!-- Config Editor Panel -->
+            <Border x:Name="ConfigEditor"
+                    Background="#BF000000"
+                    CornerRadius="10"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Padding="30,20"
+                    Margin="0,0,0,100"
+                    Visibility="Collapsed">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" MaxHeight="500">
+                    <StackPanel Width="550">
+                        <TextBlock Text="📝 Configuration Editor"
+                                   FontSize="24"
+                                   Foreground="#FFCCCCCC"
+                                   Margin="0,0,0,20"
+                                   HorizontalAlignment="Center"/>
+
+                        <!-- FTP Settings -->
+                        <TextBlock Text="FTP Settings" FontSize="16" Foreground="#FF00D9FF" Margin="0,0,0,10" FontWeight="Bold"/>
+
+                        <TextBlock Text="FTP Server:" Foreground="#FFAAAAAA" Margin="0,5,0,3"/>
+                        <TextBox x:Name="EditFtpServer" Background="#FF2E2E2E" Foreground="White" Padding="8" BorderBrush="#FF555555" BorderThickness="1"/>
+
+                        <TextBlock Text="Username:" Foreground="#FFAAAAAA" Margin="0,10,0,3"/>
+                        <TextBox x:Name="EditFtpUsername" Background="#FF2E2E2E" Foreground="White" Padding="8" BorderBrush="#FF555555" BorderThickness="1"/>
+
+                        <TextBlock Text="Password:" Foreground="#FFAAAAAA" Margin="0,10,0,3"/>
+                        <PasswordBox x:Name="EditFtpPassword" Background="#FF2E2E2E" Foreground="White" Padding="8" BorderBrush="#FF555555" BorderThickness="1"/>
+
+                        <TextBlock Text="Remote Path:" Foreground="#FFAAAAAA" Margin="0,10,0,3"/>
+                        <TextBox x:Name="EditRemotePath" Background="#FF2E2E2E" Foreground="White" Padding="8" BorderBrush="#FF555555" BorderThickness="1"/>
+
+                        <TextBlock Text="HTML Filename:" Foreground="#FFAAAAAA" Margin="0,10,0,3"/>
+                        <TextBox x:Name="EditHtmlFileName" Background="#FF2E2E2E" Foreground="White" Padding="8" BorderBrush="#FF555555" BorderThickness="1"/>
+
+                        <!-- Security Settings -->
+                        <TextBlock Text="Security Settings" FontSize="16" Foreground="#FF00D9FF" Margin="0,25,0,10" FontWeight="Bold"/>
+
+                        <TextBlock Text="Access Password:" Foreground="#FFAAAAAA" Margin="0,5,0,3"/>
+                        <PasswordBox x:Name="EditAccessPassword" Background="#FF2E2E2E" Foreground="White" Padding="8" BorderBrush="#FF555555" BorderThickness="1"/>
+
+                        <!-- Auto-Publish Settings -->
+                        <TextBlock Text="Auto-Publish Settings" FontSize="16" Foreground="#FF00D9FF" Margin="0,25,0,10" FontWeight="Bold"/>
+
+                        <CheckBox x:Name="EditAutoPublishEnabled" Content="Enable Auto-Publish" Foreground="#FFAAAAAA" Margin="0,5,0,10"/>
+
+                        <TextBlock Text="Frequency (seconds):" Foreground="#FFAAAAAA" Margin="0,5,0,3"/>
+                        <TextBox x:Name="EditAutoPublishFrequency" Background="#FF2E2E2E" Foreground="White" Padding="8" BorderBrush="#FF555555" BorderThickness="1"/>
+
+                        <!-- File Name Info -->
+                        <Border Background="#1A4A90E2" CornerRadius="5" Padding="12" Margin="0,25,0,0">
+                            <StackPanel>
+                                <TextBlock x:Name="EditConfigFileInfo" Foreground="#FFCCCCCC" TextWrapping="Wrap"/>
+                                <CheckBox x:Name="EditSaveAsPCName" Content="Save as PC-specific config" Foreground="#FFAAAAAA" Margin="0,10,0,0" Visibility="Collapsed"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Buttons -->
+                        <Grid Margin="0,25,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="💾 Save" Click="SaveConfigButton_Click" 
+                                    Background="#FF4A90E2" Foreground="White" Padding="12" FontSize="14" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                            <Button Grid.Column="2" Content="❌ Cancel" Click="CancelConfigButton_Click" 
+                                    Background="#FF666666" Foreground="White" Padding="12" FontSize="14" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
 
             <!-- Config Display Panel in Center -->
             <Border x:Name="ConfigDisplay"

@@ -144,6 +144,36 @@ Class MainWindow
         Application.Current.Shutdown()
     End Sub
 
+    Private Sub EditConfigMenuItem_Click(sender As Object, e As RoutedEventArgs)
+        ' Hide config display, show config editor
+        ConfigDisplay.Visibility = Visibility.Collapsed
+        ConfigEditor.Visibility = Visibility.Visible
+
+        ' Load current config values into editor
+        LoadConfigIntoEditor()
+    End Sub
+
+    Private Sub SaveConfigButton_Click(sender As Object, e As RoutedEventArgs)
+        ' Save config and refresh
+        If SaveConfigFromEditor() Then
+            ' Success - reload config and update display
+            LoadConfiguration()
+            UpdateConfigDisplay()
+
+            ' Hide editor, show config display
+            ConfigEditor.Visibility = Visibility.Collapsed
+            ConfigDisplay.Visibility = Visibility.Visible
+
+            MessageBox.Show("Configuration saved successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information)
+        End If
+    End Sub
+
+    Private Sub CancelConfigButton_Click(sender As Object, e As RoutedEventArgs)
+        ' Just hide editor, show config display without saving
+        ConfigEditor.Visibility = Visibility.Collapsed
+        ConfigDisplay.Visibility = Visibility.Visible
+    End Sub
+
     Private Sub SetupPortForwardingMenuItem_Click(sender As Object, e As RoutedEventArgs)
         Dim setupDialog As New StringBuilder()
         setupDialog.AppendLine("🔧 Port Forwarding Setup Wizard")
@@ -491,6 +521,144 @@ Class MainWindow
             Return False
         End Try
     End Function
+
+    Private Sub LoadConfigIntoEditor()
+        Try
+            ' FTP Settings
+            EditFtpServer.Text = GetConfigValue("//FTP/Server")
+            EditFtpUsername.Text = GetConfigValue("//FTP/Username")
+            EditRemotePath.Text = GetConfigValue("//FTP/RemotePath")
+
+            Dim htmlFileName = GetConfigValue("//FTP/HtmlFileName")
+            EditHtmlFileName.Text = If(String.IsNullOrEmpty(htmlFileName), "index.html", htmlFileName)
+
+            ' Password needs special handling since it's a PasswordBox
+            EditFtpPassword.Password = GetConfigValue("//FTP/Password")
+
+            ' Security Settings
+            EditAccessPassword.Password = GetConfigValue("//Security/AccessPassword")
+
+            ' Auto-Publish Settings
+            Dim autoPublishEnabled = GetConfigValue("//AutoPublish/Enabled")
+            EditAutoPublishEnabled.IsChecked = (autoPublishEnabled.ToLower() = "true")
+
+            Dim frequency = GetConfigValue("//AutoPublish/FrequencySeconds")
+            EditAutoPublishFrequency.Text = If(String.IsNullOrEmpty(frequency), "300", frequency)
+
+            ' File info
+            Dim pcName = GetPCName()
+            If loadedConfigFile = "config.xml" Then
+                EditConfigFileInfo.Text = $"Currently using: config.xml{Environment.NewLine}This is the default configuration file."
+                EditSaveAsPCName.Visibility = Visibility.Visible
+                EditSaveAsPCName.Content = $"Save as {pcName}.xml (PC-specific config)"
+                EditSaveAsPCName.IsChecked = False
+            Else
+                EditConfigFileInfo.Text = $"Currently using: {loadedConfigFile}{Environment.NewLine}This is a PC-specific configuration file."
+                EditSaveAsPCName.Visibility = Visibility.Collapsed
+            End If
+
+        Catch ex As Exception
+            MessageBox.Show($"Error loading configuration:{Environment.NewLine}{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error)
+        End Try
+    End Sub
+
+    Private Function SaveConfigFromEditor() As Boolean
+        Try
+            ' Determine save path
+            Dim baseDir = AppDomain.CurrentDomain.BaseDirectory
+            Dim savePath As String
+            Dim saveFileName As String
+
+            ' Check if user wants to save as PC-specific config
+            If EditSaveAsPCName.Visibility = Visibility.Visible AndAlso EditSaveAsPCName.IsChecked = True Then
+                saveFileName = $"{GetPCName()}.xml"
+                savePath = Path.Combine(baseDir, saveFileName)
+            ElseIf loadedConfigFile <> "config.xml" AndAlso loadedConfigFile <> "Not found" AndAlso loadedConfigFile <> "Error loading" Then
+                ' Already using PC-specific config, save to that file
+                saveFileName = loadedConfigFile
+                savePath = Path.Combine(baseDir, saveFileName)
+            Else
+                ' Save to config.xml
+                saveFileName = "config.xml"
+                savePath = Path.Combine(baseDir, saveFileName)
+            End If
+
+            ' Create new XML document
+            Dim newConfig As New XmlDocument()
+
+            ' Create XML declaration
+            Dim xmlDeclaration = newConfig.CreateXmlDeclaration("1.0", "utf-8", Nothing)
+            newConfig.AppendChild(xmlDeclaration)
+
+            ' Create root element
+            Dim root = newConfig.CreateElement("Configuration")
+            newConfig.AppendChild(root)
+
+            ' FTP Section
+            Dim ftpNode = newConfig.CreateElement("FTP")
+            AppendConfigElement(newConfig, ftpNode, "Server", EditFtpServer.Text)
+            AppendConfigElement(newConfig, ftpNode, "Username", EditFtpUsername.Text)
+            AppendConfigElement(newConfig, ftpNode, "Password", EditFtpPassword.Password)
+            AppendConfigElement(newConfig, ftpNode, "RemotePath", EditRemotePath.Text)
+            AppendConfigElement(newConfig, ftpNode, "HtmlFileName", EditHtmlFileName.Text)
+            root.AppendChild(ftpNode)
+
+            ' Security Section
+            Dim securityNode = newConfig.CreateElement("Security")
+            AppendConfigElement(newConfig, securityNode, "AccessPassword", EditAccessPassword.Password)
+            root.AppendChild(securityNode)
+
+            ' Copy existing RDPTargets section if it exists
+            If config IsNot Nothing Then
+                Dim rdpTargetsNode = config.SelectSingleNode("//RDPTargets")
+                If rdpTargetsNode IsNot Nothing Then
+                    Dim importedNode = newConfig.ImportNode(rdpTargetsNode, True)
+                    root.AppendChild(importedNode)
+                End If
+
+                ' Copy existing Services section if it exists
+                Dim servicesNode = config.SelectSingleNode("//Services")
+                If servicesNode IsNot Nothing Then
+                    Dim importedNode = newConfig.ImportNode(servicesNode, True)
+                    root.AppendChild(importedNode)
+                End If
+            End If
+
+            ' Auto-Publish Section
+            Dim autoPublishNode = newConfig.CreateElement("AutoPublish")
+            AppendConfigElement(newConfig, autoPublishNode, "Enabled", If(EditAutoPublishEnabled.IsChecked = True, "true", "false"))
+            AppendConfigElement(newConfig, autoPublishNode, "FrequencySeconds", EditAutoPublishFrequency.Text)
+            root.AppendChild(autoPublishNode)
+
+            ' Save to file with proper formatting
+            Dim settings As New XmlWriterSettings() With {
+                .Indent = True,
+                .IndentChars = "  ",
+                .NewLineChars = Environment.NewLine,
+                .Encoding = Encoding.UTF8
+            }
+
+            Using writer As XmlWriter = XmlWriter.Create(savePath, settings)
+                newConfig.Save(writer)
+            End Using
+
+            ' Update loaded config file name
+            loadedConfigFile = saveFileName
+            Me.Title = If(saveFileName = "config.xml", BaseTitle, $"{BaseTitle} - {saveFileName}")
+
+            Return True
+
+        Catch ex As Exception
+            MessageBox.Show($"Error saving configuration:{Environment.NewLine}{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error)
+            Return False
+        End Try
+    End Function
+
+    Private Sub AppendConfigElement(doc As XmlDocument, parent As XmlElement, elementName As String, value As String)
+        Dim element = doc.CreateElement(elementName)
+        element.InnerText = value
+        parent.AppendChild(element)
+    End Sub
 
     Private Sub LoadConfiguration()
         Try
