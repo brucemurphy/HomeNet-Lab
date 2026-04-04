@@ -374,6 +374,8 @@ Access via **File → Setup Port Forwarding...**
 ## 📱 Web Portal
 
 ### Features
+- **Heartbeat Indicator:** Real-time status monitoring (Healthy/Warning/Stale)
+- **Auto-Refresh:** Synchronized with publish interval for always-fresh data
 - PC identification banner (when using custom configs)
 - External IP and last update timestamp
 - Password-protected access (SHA-256)
@@ -381,9 +383,17 @@ Access via **File → Setup Port Forwarding...**
 - Multiple RDP buttons (downloads appropriate .rdp file)
 - Mobile-responsive design
 
+### Status Monitoring
+The portal includes an intelligent heartbeat indicator that shows data freshness:
+- **🟢 Healthy:** Updates arriving on time (within 1.5x expected interval)
+- **🟡 Warning:** Updates slightly overdue (1.5x - 2x interval)
+- **🔴 Stale:** Updates very overdue (2x+ interval)
+
+**Auto-Refresh:** Page automatically reloads when next update is expected, ensuring users always see current data.
+
 ### User Flow
 1. Visit portal URL
-2. See PC name, external IP, last update
+2. See PC name, external IP, last update, and status
 3. Click service or RDP button
 4. Enter password
 5. Access service or download RDP file
@@ -485,6 +495,8 @@ Access via **File → Setup Port Forwarding...**
 ✅ Port forwarding wizard (clipboard copy)  
 ✅ Single instance enforcement  
 ✅ Live monitoring (5-second intervals)  
+✅ **Heartbeat indicator** - Real-time portal status monitoring  
+✅ **Auto-refresh portal** - Synchronized with publish interval  
 ✅ Auto-publishing (configurable)  
 ✅ **Daily Bing wallpaper refresh**  
 ✅ SHA-256 password protection  
@@ -495,7 +507,7 @@ Access via **File → Setup Port Forwarding...**
 
 ---
 
-**Version:** 1.2  
+**Version:** 1.3  
 **Platform:** Windows 10/11  
 **Framework:** .NET 8.0  
 **GitHub:** https://github.com/brucemurphy/HomeNet-Lab

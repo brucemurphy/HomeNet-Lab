@@ -1230,6 +1230,19 @@ Class MainWindow
             subtitle = $"{pcName} • Secure Access Portal"
         End If
 
+        ' Get auto-publish frequency for heartbeat indicator
+        Dim updateIntervalSeconds As Integer = 300 ' Default 5 minutes
+        Dim frequencyStr = GetConfigValue("//AutoPublish/FrequencySeconds")
+        If Not String.IsNullOrEmpty(frequencyStr) Then
+            If Integer.TryParse(frequencyStr, updateIntervalSeconds) Then
+                If updateIntervalSeconds < 60 Then
+                    updateIntervalSeconds = 60
+                End If
+            Else
+                updateIntervalSeconds = 300
+            End If
+        End If
+
         ' Get all services
         Dim services As New List(Of (Name As String, Url As String))
         Try
@@ -1426,6 +1439,22 @@ Class MainWindow
         html.AppendLine("            margin-bottom: 10px;")
         html.AppendLine("            display: none;")
         html.AppendLine("        }")
+        html.AppendLine("        .heartbeat-indicator {")
+        html.AppendLine("            display: flex;")
+        html.AppendLine("            align-items: center;")
+        html.AppendLine("            gap: 8px;")
+        html.AppendLine("            font-family: 'Courier New', monospace;")
+        html.AppendLine("            font-weight: bold;")
+        html.AppendLine("        }")
+        html.AppendLine("        .heartbeat-dot {")
+        html.AppendLine("            width: 12px;")
+        html.AppendLine("            height: 12px;")
+        html.AppendLine("            border-radius: 50%;")
+        html.AppendLine("            transition: background-color 0.3s ease;")
+        html.AppendLine("        }")
+        html.AppendLine("        .heartbeat-healthy { background-color: #00B386; box-shadow: 0 0 8px #00B386; }")
+        html.AppendLine("        .heartbeat-warning { background-color: #FFA500; box-shadow: 0 0 8px #FFA500; }")
+        html.AppendLine("        .heartbeat-stale { background-color: #E74C3C; box-shadow: 0 0 8px #E74C3C; }")
         html.AppendLine("    </style>")
         html.AppendLine("</head>")
         html.AppendLine("<body>")
@@ -1440,7 +1469,14 @@ Class MainWindow
         html.AppendLine("            </div>")
         html.AppendLine("            <div class=""info-row"">")
         html.AppendLine($"                <span class=""info-label"">Last Updated:</span>")
-        html.AppendLine($"                <span class=""info-value"">{DateTime.Now:yyyy-MM-dd HH:mm:ss}</span>")
+        html.AppendLine($"                <span class=""info-value"" id=""lastUpdateTime"">{DateTime.Now:yyyy-MM-dd HH:mm:ss}</span>")
+        html.AppendLine("            </div>")
+        html.AppendLine("            <div class=""info-row"">")
+        html.AppendLine($"                <span class=""info-label"">Status:</span>")
+        html.AppendLine("                <div class=""heartbeat-indicator"">")
+        html.AppendLine("                    <div class=""heartbeat-dot heartbeat-healthy"" id=""heartbeatDot""></div>")
+        html.AppendLine("                    <span id=""heartbeatStatus"">Healthy</span>")
+        html.AppendLine("                </div>")
         html.AppendLine("            </div>")
         html.AppendLine("        </div>")
         html.AppendLine("        ")
@@ -1484,6 +1520,8 @@ Class MainWindow
         html.AppendLine("")
         html.AppendLine("    <script>")
         html.AppendLine($"        const CORRECT_PASSWORD_HASH = '{passwordHash}';")
+        html.AppendLine($"        const UPDATE_INTERVAL_SECONDS = {updateIntervalSeconds};")
+        html.AppendLine($"        const LAST_UPDATE_TIME = new Date('{DateTime.Now:yyyy-MM-dd HH:mm:ss}');")
 
         ' Add all service URLs as JavaScript array
         html.AppendLine("        const SERVICE_URLS = [")
@@ -1569,6 +1607,48 @@ Class MainWindow
         html.AppendLine("                    document.body.removeChild(link);")
         html.AppendLine("                });")
         html.AppendLine("        }")
+        html.AppendLine("")
+        html.AppendLine("        // Heartbeat monitoring")
+        html.AppendLine("        function updateHeartbeat() {")
+        html.AppendLine("            const now = new Date();")
+        html.AppendLine("            const secondsSinceUpdate = (now - LAST_UPDATE_TIME) / 1000;")
+        html.AppendLine("            const dot = document.getElementById('heartbeatDot');")
+        html.AppendLine("            const status = document.getElementById('heartbeatStatus');")
+        html.AppendLine("")
+        html.AppendLine("            // Remove all status classes")
+        html.AppendLine("            dot.classList.remove('heartbeat-healthy', 'heartbeat-warning', 'heartbeat-stale');")
+        html.AppendLine("")
+        html.AppendLine("            // Healthy: within expected interval")
+        html.AppendLine("            if (secondsSinceUpdate < UPDATE_INTERVAL_SECONDS * 1.5) {")
+        html.AppendLine("                dot.classList.add('heartbeat-healthy');")
+        html.AppendLine("                status.textContent = 'Healthy';")
+        html.AppendLine("            }")
+        html.AppendLine("            // Warning: overdue but not critical (1.5x - 2x interval)")
+        html.AppendLine("            else if (secondsSinceUpdate < UPDATE_INTERVAL_SECONDS * 2) {")
+        html.AppendLine("                dot.classList.add('heartbeat-warning');")
+        html.AppendLine("                status.textContent = 'Warning';")
+        html.AppendLine("            }")
+        html.AppendLine("            // Stale: very overdue (2x+ interval)")
+        html.AppendLine("            else {")
+        html.AppendLine("                dot.classList.add('heartbeat-stale');")
+        html.AppendLine("                status.textContent = 'Stale';")
+        html.AppendLine("            }")
+        html.AppendLine("        }")
+        html.AppendLine("")
+        html.AppendLine("        // Update heartbeat every 10 seconds")
+        html.AppendLine("        setInterval(updateHeartbeat, 10000);")
+        html.AppendLine("        updateHeartbeat(); // Initial check")
+        html.AppendLine("")
+        html.AppendLine("        // Auto-refresh page synchronized with expected update time")
+        html.AppendLine("        // Calculate when the next update is expected based on last publish time")
+        html.AppendLine("        const timeSinceLastUpdate = (new Date() - LAST_UPDATE_TIME) / 1000; // seconds")
+        html.AppendLine("        const timeUntilNextUpdate = UPDATE_INTERVAL_SECONDS - timeSinceLastUpdate;")
+        html.AppendLine("        // Add 5 second buffer after expected update, minimum 10 seconds")
+        html.AppendLine("        const refreshTime = Math.max(timeUntilNextUpdate + 5, 10);")
+        html.AppendLine("        ")
+        html.AppendLine("        setTimeout(() => {")
+        html.AppendLine("            location.reload();")
+        html.AppendLine("        }, refreshTime * 1000);")
         html.AppendLine("    </script>")
         html.AppendLine("</body>")
         html.AppendLine("</html>")
