@@ -1469,7 +1469,7 @@ Class MainWindow
         html.AppendLine("            </div>")
         html.AppendLine("            <div class=""info-row"">")
         html.AppendLine($"                <span class=""info-label"">Last Updated:</span>")
-        html.AppendLine($"                <span class=""info-value"" id=""lastUpdateTime"">{DateTime.Now:yyyy-MM-dd HH:mm:ss}</span>")
+        html.AppendLine($"                <span class=""info-value"" id=""lastUpdateTime"">{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss}Z</span>")
         html.AppendLine("            </div>")
         html.AppendLine("            <div class=""info-row"">")
         html.AppendLine($"                <span class=""info-label"">Status:</span>")
@@ -1521,7 +1521,7 @@ Class MainWindow
         html.AppendLine("    <script>")
         html.AppendLine($"        const CORRECT_PASSWORD_HASH = '{passwordHash}';")
         html.AppendLine($"        const UPDATE_INTERVAL_SECONDS = {updateIntervalSeconds};")
-        html.AppendLine($"        const LAST_UPDATE_TIME = new Date('{DateTime.Now:yyyy-MM-dd HH:mm:ss}');")
+        html.AppendLine($"        const LAST_UPDATE_TIME = new Date('{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss}Z');")
 
         ' Add all service URLs as JavaScript array
         html.AppendLine("        const SERVICE_URLS = [")

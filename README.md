@@ -121,6 +121,53 @@ Edit `config.xml` or create `[PCNAME].xml` for PC-specific settings:
 
 ---
 
+## 💓 Heartbeat & Auto-Refresh
+
+**New in v1.3!** The web portal now features intelligent monitoring and automatic refresh.
+
+### How It Works
+
+1. **Publish Timestamp:** Each time the portal is published, it embeds the current UTC timestamp
+2. **Update Interval:** The configured `FrequencySeconds` value is embedded in the page
+3. **Heartbeat Monitor:** JavaScript checks every 10 seconds if updates are arriving on time
+4. **Auto-Refresh:** Page reloads automatically when the next update is expected
+
+### Status Indicators
+
+| Status | Color | Meaning | Calculation |
+|--------|-------|---------|-------------|
+| 🟢 Healthy | Green | Updates on schedule | < 1.5x interval |
+| 🟡 Warning | Orange | Slightly overdue | 1.5x - 2x interval |
+| 🔴 Stale | Red | Very overdue | > 2x interval |
+
+### Example Timeline (300s interval)
+
+```
+00:00 - Page published, shows "Healthy"
+02:00 - User opens page, sees "Healthy", refreshes at 05:05
+05:00 - New version published
+05:05 - Page auto-refreshes, loads new data
+07:30 - Heartbeat turns "Warning" (no update at 10:00)
+10:05 - Page tries to refresh, shows "Stale" if still no update
+```
+
+### Timezone Handling
+
+- **Server:** Uses `DateTime.UtcNow` (Universal Time)
+- **Display:** Timestamps show in **user's local timezone** automatically
+- **Calculations:** All timing uses **UTC** for accuracy
+- **Global Support:** Works correctly regardless of server or user location
+
+### Benefits
+
+✅ **Always Fresh Data** - Page reloads automatically  
+✅ **Visual Status** - Instant health indicator  
+✅ **Smart Timing** - Refreshes when update expected, not on fixed interval  
+✅ **Timezone Safe** - Works globally without timezone issues  
+✅ **No Manual Refresh** - Set it and forget it  
+
+---
+
 ## 🔧 Configuration Reference
 
 ### FTP Settings
@@ -391,6 +438,14 @@ The portal includes an intelligent heartbeat indicator that shows data freshness
 
 **Auto-Refresh:** Page automatically reloads when next update is expected, ensuring users always see current data.
 
+**Timezone Support:** All timestamps use UTC internally for accurate calculations regardless of server or user timezone. Display timestamps automatically convert to user's local time.
+
+**Refresh Logic:**
+- Calculates time since last publish
+- Determines when next update is expected
+- Refreshes 5 seconds after expected update
+- Minimum refresh interval: 10 seconds
+
 ### User Flow
 1. Visit portal URL
 2. See PC name, external IP, last update, and status
@@ -426,6 +481,16 @@ The portal includes an intelligent heartbeat indicator that shows data freshness
 
 **Wrong config loaded:** Check dashboard "Config File" - should match PC name (e.g., `SERVER-01.xml`)
 
+**Portal not refreshing:**
+- Check browser console for JavaScript errors
+- Verify `AutoPublish/FrequencySeconds` is set correctly in config
+- Ensure timestamp format is ISO 8601 (YYYY-MM-DDTHH:MM:SSZ)
+- Clear browser cache and reload
+
+**Heartbeat shows "Stale" immediately:**
+- Likely timezone issue - fixed in v1.3 with UTC timestamps
+- Re-publish portal to get updated HTML with UTC support
+
 **VPC RDP not working:**
 - Verify router forwards ports to host PC
 - Run `netsh interface portproxy show all` on host
@@ -460,6 +525,9 @@ The portal includes an intelligent heartbeat indicator that shows data freshness
 - 300s publish frequency recommended
 - Remote path must end with `/`
 - FTP timeout: 30 seconds per file
+- Auto-refresh synchronized with publish schedule
+- Heartbeat checks every 10 seconds
+- Page refreshes automatically when new data expected
 
 ---
 
