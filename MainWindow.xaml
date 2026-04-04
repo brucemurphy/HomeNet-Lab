@@ -62,6 +62,33 @@
             <Setter Property="Padding" Value="8,6"/>
             <Setter Property="Template" Value="{StaticResource DarkMenuItemTemplate}"/>
         </Style>
+
+        <!-- Config Editor Button Style with Rounded Corners -->
+        <Style x:Key="ConfigEditorButton" TargetType="{x:Type Button}">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}" 
+                                CornerRadius="5" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.8"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <DockPanel LastChildFill="True">
@@ -130,6 +157,81 @@
                         <TextBlock Text="Frequency (seconds):" Foreground="#FFAAAAAA" Margin="0,5,0,3"/>
                         <TextBox x:Name="EditAutoPublishFrequency" Background="#FF2E2E2E" Foreground="White" Padding="8" BorderBrush="#FF555555" BorderThickness="1"/>
 
+                        <!-- Services Settings -->
+                        <TextBlock Text="Services" FontSize="16" Foreground="#FF00D9FF" Margin="0,25,0,10" FontWeight="Bold"/>
+
+                        <ListBox x:Name="EditServicesList" Background="#FF2E2E2E" Foreground="White" BorderBrush="#FF555555" Height="120" Margin="0,5,0,10">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding DisplayText}" Foreground="White" VerticalAlignment="Center"/>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding Enabled}" Content="Enabled" Foreground="#FFAAAAAA" Margin="10,0" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="5"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="5"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="➕ Add" Click="AddServiceButton_Click" 
+                                    Style="{StaticResource ConfigEditorButton}"
+                                    Background="#CC555555" Padding="8" FontSize="12"/>
+                            <Button Grid.Column="2" Content="✏️ Edit" Click="EditServiceButton_Click" 
+                                    Style="{StaticResource ConfigEditorButton}"
+                                    Background="#CC555555" Padding="8" FontSize="12"/>
+                            <Button Grid.Column="4" Content="🗑️ Remove" Click="RemoveServiceButton_Click" 
+                                    Style="{StaticResource ConfigEditorButton}"
+                                    Background="#CC555555" Padding="8" FontSize="12"/>
+                        </Grid>
+
+                        <!-- RDP Targets Settings -->
+                        <TextBlock Text="RDP Targets (Virtual PCs)" FontSize="16" Foreground="#FF00D9FF" Margin="0,25,0,10" FontWeight="Bold"/>
+
+                        <ListBox x:Name="EditRdpTargetsList" Background="#FF2E2E2E" Foreground="White" BorderBrush="#FF555555" Height="120" Margin="0,5,0,10">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding DisplayText}" Foreground="White" VerticalAlignment="Center"/>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding Enabled}" Content="Enabled" Foreground="#FFAAAAAA" Margin="10,0" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="5"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="5"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="➕ Add" Click="AddRdpTargetButton_Click" 
+                                    Style="{StaticResource ConfigEditorButton}"
+                                    Background="#CC555555" Padding="8" FontSize="12"/>
+                            <Button Grid.Column="2" Content="✏️ Edit" Click="EditRdpTargetButton_Click" 
+                                    Style="{StaticResource ConfigEditorButton}"
+                                    Background="#CC555555" Padding="8" FontSize="12"/>
+                            <Button Grid.Column="4" Content="🗑️ Remove" Click="RemoveRdpTargetButton_Click" 
+                                    Style="{StaticResource ConfigEditorButton}"
+                                    Background="#CC555555" Padding="8" FontSize="12"/>
+                        </Grid>
+
                         <!-- File Name Info -->
                         <Border Background="#1A4A90E2" CornerRadius="5" Padding="12" Margin="0,25,0,0">
                             <StackPanel>
@@ -146,9 +248,11 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Button Grid.Column="0" Content="💾 Save" Click="SaveConfigButton_Click" 
-                                    Background="#FF4A90E2" Foreground="White" Padding="12" FontSize="14" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                    Style="{StaticResource ConfigEditorButton}"
+                                    Background="#CC555555" Padding="12" FontSize="12"/>
                             <Button Grid.Column="2" Content="❌ Cancel" Click="CancelConfigButton_Click" 
-                                    Background="#FF666666" Foreground="White" Padding="12" FontSize="14" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                                    Style="{StaticResource ConfigEditorButton}"
+                                    Background="#CC555555" Padding="12" FontSize="12"/>
                         </Grid>
                     </StackPanel>
                 </ScrollViewer>
@@ -242,6 +346,17 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="RDP Targets:" Foreground="#FFAAAAAA" FontWeight="SemiBold" Margin="0,0,10,0"/>
                             <TextBlock Grid.Column="1" x:Name="ConfigRdpTargets" Foreground="#FFFFFF" FontFamily="Consolas" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Background="#1A000000" CornerRadius="5" Padding="12" Margin="0,3">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="RDP Ports:" Foreground="#FFAAAAAA" FontWeight="SemiBold" Margin="0,0,10,0"/>
+                            <TextBlock Grid.Column="1" x:Name="ConfigRdpPorts" Foreground="#FFFFFF" FontFamily="Consolas" HorizontalAlignment="Right"/>
                         </Grid>
                     </Border>
 

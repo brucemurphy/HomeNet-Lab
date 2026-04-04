@@ -9,6 +9,7 @@ Imports System.Windows.Interop
 Imports System.Windows.Media.Effects
 Imports System.Windows.Threading
 Imports System.Xml
+Imports System.Collections.ObjectModel
 
 Class MainWindow
     Private Shared ReadOnly httpClient As New HttpClient()
@@ -27,6 +28,10 @@ Class MainWindow
     Private _activityActive As Boolean = False
     Private _uploadInProgress As Boolean = False
     Private ReadOnly _rand As New Random()
+
+    ' Service and RDP target editors
+    Private servicesCollection As New ObservableCollection(Of ServiceItem)
+    Private rdpTargetsCollection As New ObservableCollection(Of RdpTargetItem)
 
     Private Const DwmwaUseImmersiveDarkMode As Integer = 20
 
@@ -545,6 +550,66 @@ Class MainWindow
             Dim frequency = GetConfigValue("//AutoPublish/FrequencySeconds")
             EditAutoPublishFrequency.Text = If(String.IsNullOrEmpty(frequency), "300", frequency)
 
+            ' Load Services
+            servicesCollection.Clear()
+            Try
+                If config IsNot Nothing Then
+                    Dim serviceNodes = config.SelectNodes("//Services/Service")
+                    If serviceNodes IsNot Nothing Then
+                        For Each serviceNode As XmlNode In serviceNodes
+                            Dim name = serviceNode.SelectSingleNode("Name")?.InnerText
+                            Dim portStr = serviceNode.SelectSingleNode("Port")?.InnerText
+                            Dim enabled = serviceNode.SelectSingleNode("Enabled")?.InnerText
+
+                            If Not String.IsNullOrEmpty(name) AndAlso Not String.IsNullOrEmpty(portStr) Then
+                                Dim port As Integer
+                                If Integer.TryParse(portStr, port) Then
+                                    servicesCollection.Add(New ServiceItem With {
+                                        .Name = name,
+                                        .Port = port,
+                                        .Enabled = If(enabled?.ToLower() = "true", True, False)
+                                    })
+                                End If
+                            End If
+                        Next
+                    End If
+                End If
+            Catch
+            End Try
+
+            EditServicesList.ItemsSource = servicesCollection
+
+            ' Load RDP Targets
+            rdpTargetsCollection.Clear()
+            Try
+                If config IsNot Nothing Then
+                    Dim targetNodes = config.SelectNodes("//RDPTargets/Target")
+                    If targetNodes IsNot Nothing Then
+                        For Each targetNode As XmlNode In targetNodes
+                            Dim name = targetNode.SelectSingleNode("Name")?.InnerText
+                            Dim portStr = targetNode.SelectSingleNode("Port")?.InnerText
+                            Dim fileName = targetNode.SelectSingleNode("FileName")?.InnerText
+                            Dim enabled = targetNode.SelectSingleNode("Enabled")?.InnerText
+
+                            If Not String.IsNullOrEmpty(name) AndAlso Not String.IsNullOrEmpty(portStr) AndAlso Not String.IsNullOrEmpty(fileName) Then
+                                Dim port As Integer
+                                If Integer.TryParse(portStr, port) Then
+                                    rdpTargetsCollection.Add(New RdpTargetItem With {
+                                        .Name = name,
+                                        .Port = port,
+                                        .FileName = fileName,
+                                        .Enabled = If(enabled?.ToLower() = "true", True, False)
+                                    })
+                                End If
+                            End If
+                        Next
+                    End If
+                End If
+            Catch
+            End Try
+
+            EditRdpTargetsList.ItemsSource = rdpTargetsCollection
+
             ' File info
             Dim pcName = GetPCName()
             If loadedConfigFile = "config.xml" Then
@@ -608,21 +673,28 @@ Class MainWindow
             AppendConfigElement(newConfig, securityNode, "AccessPassword", EditAccessPassword.Password)
             root.AppendChild(securityNode)
 
-            ' Copy existing RDPTargets section if it exists
-            If config IsNot Nothing Then
-                Dim rdpTargetsNode = config.SelectSingleNode("//RDPTargets")
-                If rdpTargetsNode IsNot Nothing Then
-                    Dim importedNode = newConfig.ImportNode(rdpTargetsNode, True)
-                    root.AppendChild(importedNode)
-                End If
+            ' RDP Targets Section (from editor)
+            Dim rdpTargetsNode = newConfig.CreateElement("RDPTargets")
+            For Each targetItem In rdpTargetsCollection
+                Dim targetNode = newConfig.CreateElement("Target")
+                AppendConfigElement(newConfig, targetNode, "Name", targetItem.Name)
+                AppendConfigElement(newConfig, targetNode, "Port", targetItem.Port.ToString())
+                AppendConfigElement(newConfig, targetNode, "FileName", targetItem.FileName)
+                AppendConfigElement(newConfig, targetNode, "Enabled", If(targetItem.Enabled, "true", "false"))
+                rdpTargetsNode.AppendChild(targetNode)
+            Next
+            root.AppendChild(rdpTargetsNode)
 
-                ' Copy existing Services section if it exists
-                Dim servicesNode = config.SelectSingleNode("//Services")
-                If servicesNode IsNot Nothing Then
-                    Dim importedNode = newConfig.ImportNode(servicesNode, True)
-                    root.AppendChild(importedNode)
-                End If
-            End If
+            ' Services Section (from editor)
+            Dim servicesNode = newConfig.CreateElement("Services")
+            For Each serviceItem In servicesCollection
+                Dim serviceNode = newConfig.CreateElement("Service")
+                AppendConfigElement(newConfig, serviceNode, "Name", serviceItem.Name)
+                AppendConfigElement(newConfig, serviceNode, "Port", serviceItem.Port.ToString())
+                AppendConfigElement(newConfig, serviceNode, "Enabled", If(serviceItem.Enabled, "true", "false"))
+                servicesNode.AppendChild(serviceNode)
+            Next
+            root.AppendChild(servicesNode)
 
             ' Auto-Publish Section
             Dim autoPublishNode = newConfig.CreateElement("AutoPublish")
@@ -807,6 +879,7 @@ Class MainWindow
 
                                   ' RDP Target Configuration - Get all enabled RDP targets
                                   Dim rdpTargetNames As New List(Of String)
+                                  Dim rdpTargetPorts As New List(Of String)
 
                                   Try
                                       If config IsNot Nothing Then
@@ -818,7 +891,8 @@ Class MainWindow
                                                   Dim enabled = targetNode.SelectSingleNode("Enabled")?.InnerText
 
                                                   If enabled?.ToLower() = "true" AndAlso Not String.IsNullOrEmpty(name) AndAlso Not String.IsNullOrEmpty(port) Then
-                                                      rdpTargetNames.Add($"{name}:{port}")
+                                                      rdpTargetNames.Add(name)
+                                                      rdpTargetPorts.Add(port)
                                                   End If
                                               Next
                                           End If
@@ -827,6 +901,7 @@ Class MainWindow
                                   End Try
 
                                   ConfigRdpTargets.Text = If(rdpTargetNames.Count > 0, String.Join(", ", rdpTargetNames), "Not configured")
+                                  ConfigRdpPorts.Text = If(rdpTargetPorts.Count > 0, String.Join(", ", rdpTargetPorts), "Not configured")
 
                                   ' Auto-Publish Configuration
                                   Dim autoPublishEnabled = GetConfigValue("//AutoPublish/Enabled")
@@ -1377,7 +1452,7 @@ Class MainWindow
         ' Add all service URLs as JavaScript array
         html.AppendLine("        const SERVICE_URLS = [")
         For i As Integer = 0 To services.Count - 1
-    Dim comma = If(i < services.Count - 1, ",", "")
+            Dim comma = If(i < services.Count - 1, ",", "")
             html.AppendLine($"            '{services(i).Url}'{comma}")
         Next
         html.AppendLine("        ];")
@@ -1385,7 +1460,7 @@ Class MainWindow
         ' Add all RDP filenames as JavaScript array
         html.AppendLine("        const RDP_FILENAMES = [")
         For i As Integer = 0 To rdpTargets.Count - 1
-    Dim comma = If(i < rdpTargets.Count - 1, ",", "")
+            Dim comma = If(i < rdpTargets.Count - 1, ",", "")
             html.AppendLine($"            '{rdpTargets(i).FileName}'{comma}")
         Next
         html.AppendLine("        ];")
@@ -1625,4 +1700,223 @@ Class MainWindow
             Return False
         End Try
     End Function
+
+    ' Service Editor Handlers
+    Private Sub AddServiceButton_Click(sender As Object, e As RoutedEventArgs)
+        Dim dialog As New ServiceDialog()
+        If dialog.ShowDialog() = True Then
+            servicesCollection.Add(New ServiceItem With {
+                .Name = dialog.ServiceName,
+                .Port = dialog.ServicePort,
+                .Enabled = dialog.ServiceEnabled
+            })
+        End If
+    End Sub
+
+    Private Sub EditServiceButton_Click(sender As Object, e As RoutedEventArgs)
+        If EditServicesList.SelectedItem Is Nothing Then
+            MessageBox.Show("Please select a service to edit.", "No Selection", MessageBoxButton.OK, MessageBoxImage.Information)
+            Return
+        End If
+
+        Dim selectedService = CType(EditServicesList.SelectedItem, ServiceItem)
+        Dim dialog As New ServiceDialog() With {
+            .ServiceName = selectedService.Name,
+            .ServicePort = selectedService.Port,
+            .ServiceEnabled = selectedService.Enabled
+        }
+
+        If dialog.ShowDialog() = True Then
+            selectedService.Name = dialog.ServiceName
+            selectedService.Port = dialog.ServicePort
+            selectedService.Enabled = dialog.ServiceEnabled
+            selectedService.NotifyPropertyChanged("DisplayText")
+        End If
+    End Sub
+
+    Private Sub RemoveServiceButton_Click(sender As Object, e As RoutedEventArgs)
+        If EditServicesList.SelectedItem Is Nothing Then
+            MessageBox.Show("Please select a service to remove.", "No Selection", MessageBoxButton.OK, MessageBoxImage.Information)
+            Return
+        End If
+
+        Dim result = MessageBox.Show("Remove this service?", "Confirm Remove", MessageBoxButton.YesNo, MessageBoxImage.Question)
+        If result = MessageBoxResult.Yes Then
+            servicesCollection.Remove(CType(EditServicesList.SelectedItem, ServiceItem))
+        End If
+    End Sub
+
+    ' RDP Target Editor Handlers
+    Private Sub AddRdpTargetButton_Click(sender As Object, e As RoutedEventArgs)
+        Dim dialog As New RdpTargetDialog()
+        If dialog.ShowDialog() = True Then
+            rdpTargetsCollection.Add(New RdpTargetItem With {
+                .Name = dialog.TargetName,
+                .Port = dialog.TargetPort,
+                .FileName = dialog.TargetFileName,
+                .Enabled = dialog.TargetEnabled
+            })
+        End If
+    End Sub
+
+    Private Sub EditRdpTargetButton_Click(sender As Object, e As RoutedEventArgs)
+        If EditRdpTargetsList.SelectedItem Is Nothing Then
+            MessageBox.Show("Please select an RDP target to edit.", "No Selection", MessageBoxButton.OK, MessageBoxImage.Information)
+            Return
+        End If
+
+        Dim selectedTarget = CType(EditRdpTargetsList.SelectedItem, RdpTargetItem)
+        Dim dialog As New RdpTargetDialog() With {
+            .TargetName = selectedTarget.Name,
+            .TargetPort = selectedTarget.Port,
+            .TargetFileName = selectedTarget.FileName,
+            .TargetEnabled = selectedTarget.Enabled
+        }
+
+        If dialog.ShowDialog() = True Then
+            selectedTarget.Name = dialog.TargetName
+            selectedTarget.Port = dialog.TargetPort
+            selectedTarget.FileName = dialog.TargetFileName
+            selectedTarget.Enabled = dialog.TargetEnabled
+            selectedTarget.NotifyPropertyChanged("DisplayText")
+        End If
+    End Sub
+
+    Private Sub RemoveRdpTargetButton_Click(sender As Object, e As RoutedEventArgs)
+        If EditRdpTargetsList.SelectedItem Is Nothing Then
+            MessageBox.Show("Please select an RDP target to remove.", "No Selection", MessageBoxButton.OK, MessageBoxImage.Information)
+            Return
+        End If
+
+        Dim result = MessageBox.Show("Remove this RDP target?", "Confirm Remove", MessageBoxButton.YesNo, MessageBoxImage.Question)
+        If result = MessageBoxResult.Yes Then
+            rdpTargetsCollection.Remove(CType(EditRdpTargetsList.SelectedItem, RdpTargetItem))
+        End If
+    End Sub
+End Class
+
+' ServiceItem class for data binding
+Public Class ServiceItem
+    Implements INotifyPropertyChanged
+
+    Private _name As String
+    Private _port As Integer
+    Private _enabled As Boolean
+
+    Public Property Name As String
+        Get
+            Return _name
+        End Get
+        Set(value As String)
+            _name = value
+            OnPropertyChanged("Name")
+            OnPropertyChanged("DisplayText")
+        End Set
+    End Property
+
+    Public Property Port As Integer
+        Get
+            Return _port
+        End Get
+        Set(value As Integer)
+            _port = value
+            OnPropertyChanged("Port")
+            OnPropertyChanged("DisplayText")
+        End Set
+    End Property
+
+    Public Property Enabled As Boolean
+        Get
+            Return _enabled
+        End Get
+        Set(value As Boolean)
+            _enabled = value
+            OnPropertyChanged("Enabled")
+        End Set
+    End Property
+
+    Public ReadOnly Property DisplayText As String
+        Get
+            Return $"{Name} (Port {Port})"
+        End Get
+    End Property
+
+    Public Event PropertyChanged As PropertyChangedEventHandler Implements INotifyPropertyChanged.PropertyChanged
+
+    Public Sub NotifyPropertyChanged(propertyName As String)
+        RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
+    End Sub
+
+    Protected Sub OnPropertyChanged(propertyName As String)
+        RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
+    End Sub
+End Class
+
+' RdpTargetItem class for data binding
+Public Class RdpTargetItem
+    Implements INotifyPropertyChanged
+
+    Private _name As String
+    Private _port As Integer
+    Private _fileName As String
+    Private _enabled As Boolean
+
+    Public Property Name As String
+        Get
+            Return _name
+        End Get
+        Set(value As String)
+            _name = value
+            OnPropertyChanged("Name")
+            OnPropertyChanged("DisplayText")
+        End Set
+    End Property
+
+    Public Property Port As Integer
+        Get
+            Return _port
+        End Get
+        Set(value As Integer)
+            _port = value
+            OnPropertyChanged("Port")
+            OnPropertyChanged("DisplayText")
+        End Set
+    End Property
+
+    Public Property FileName As String
+        Get
+            Return _fileName
+        End Get
+        Set(value As String)
+            _fileName = value
+            OnPropertyChanged("FileName")
+            OnPropertyChanged("DisplayText")
+        End Set
+    End Property
+
+    Public Property Enabled As Boolean
+        Get
+            Return _enabled
+        End Get
+        Set(value As Boolean)
+            _enabled = value
+            OnPropertyChanged("Enabled")
+        End Set
+    End Property
+
+    Public ReadOnly Property DisplayText As String
+        Get
+            Return $"{Name} (Port {Port}) - {FileName}"
+        End Get
+    End Property
+
+    Public Event PropertyChanged As PropertyChangedEventHandler Implements INotifyPropertyChanged.PropertyChanged
+
+    Public Sub NotifyPropertyChanged(propertyName As String)
+        RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
+    End Sub
+
+    Protected Sub OnPropertyChanged(propertyName As String)
+        RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
+    End Sub
 End Class

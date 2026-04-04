@@ -248,8 +248,10 @@ Double-click icon to show window.
 Shows real-time information:
 - **Config File** - Active configuration file
 - **FTP Server** - Upload destination
-- **Services** - Enabled services and ports
-- **RDP Targets** - Configured RDP targets and ports
+- **Services** - Enabled services
+- **Ports** - Service port numbers
+- **RDP Targets** - Configured RDP target names
+- **RDP Ports** - RDP port numbers
 - **Auto-Publish** - Status and frequency
 - **Activity Light** - Connection status
 - **IP Display** - External IP, PC name, local IP
@@ -264,7 +266,7 @@ Shows real-time information:
 
 ## 📝 Configuration Editor
 
-**New in v1.2!** Built-in GUI editor for easy configuration management.
+**New in v1.2!** Built-in GUI editor for complete configuration management.
 
 ### Access
 Click **File → Edit Config.xml** from the menu bar.
@@ -273,8 +275,9 @@ Click **File → Edit Config.xml** from the menu bar.
 - **Visual Editor:** No need to manually edit XML files
 - **Smart Save:** Detects current config file (config.xml or PCNAME.xml)
 - **PC-Specific Configs:** Option to save as `[PCNAME].xml` when using default config
-- **Preservation:** Automatically preserves RDPTargets and Services sections
-- **Validation:** Ensures valid configuration before saving
+- **Borderless Dialogs:** Modern, clean interface with rounded corners
+- **Keyboard Shortcuts:** Enter to save, Escape to cancel
+- **Validation:** Port numbers (1-65535), required fields, filename extensions
 - **Live Reload:** Updates dashboard immediately after save
 
 ### Editable Settings
@@ -292,22 +295,55 @@ Click **File → Edit Config.xml** from the menu bar.
 - Enable/Disable toggle
 - Frequency in seconds
 
+**Services:**
+- ➕ Add new services
+- ✏️ Edit existing services
+- 🗑️ Remove services
+- Configure: name, port, enabled status
+- Visual list with live updates
+
+**RDP Targets (Virtual PCs):**
+- ➕ Add new RDP targets
+- ✏️ Edit existing targets
+- 🗑️ Remove targets
+- Configure: name, port, filename, enabled status
+- Visual list with live updates
+- Automatic .rdp extension validation
+
 ### How to Use
 1. Open **File → Edit Config.xml**
 2. Modify desired settings in the form
-3. *Optional:* Check "Save as PC-specific config" to create `[PCNAME].xml`
-4. Click **💾 Save** to apply changes (or **❌ Cancel** to discard)
-5. Dashboard updates automatically with new settings
+3. Click **➕ Add** to add new services or RDP targets
+4. Click **✏️ Edit** to modify selected items (or double-click)
+5. Click **🗑️ Remove** to delete selected items
+6. Toggle **Enabled** checkboxes directly in the list
+7. *Optional:* Check "Save as PC-specific config" to create `[PCNAME].xml`
+8. Click **💾 Save** to apply changes (or **❌ Cancel** to discard)
+9. Dashboard updates automatically with new settings
+
+### Dialog Features
+- **Borderless design** with subtle borders for modern look
+- **Close button (✕)** in top-right corner
+- **Keyboard shortcuts:**
+  - **Enter** - Save changes
+  - **Escape** - Cancel and close
+- **Real-time validation** - Prevents invalid entries
+- **Auto-formatting** - Adds .rdp extension if missing
 
 ### Benefits
 ✅ No XML syntax knowledge required  
 ✅ Prevents configuration errors  
-✅ Preserves complex sections (RDP targets, Services)  
+✅ Visual service management (add/edit/remove)  
+✅ Visual RDP target management (add/edit/remove)  
+✅ Port validation (1-65535)  
+✅ Filename validation (.rdp extension)  
 ✅ Creates PC-specific configs easily  
 ✅ Shows which config file is active  
 ✅ Immediate feedback on save  
+✅ Keyboard-friendly operation  
+✅ Modern borderless UI with rounded buttons  
 
-**Note:** RDP Targets and Services must still be edited in XML (advanced sections). The editor preserves these when saving basic settings.
+**Note:** All configuration is now manageable through the GUI editor!
 
 ---
 
@@ -428,7 +464,8 @@ Access via **File → Setup Port Forwarding...**
 ## 🎉 Features at a Glance
 
 ✅ Auto-loads PC-specific configs  
-✅ **Built-in config editor (NEW!)**  
+✅ **Full GUI config editor** - Services & RDP targets  
+✅ **Borderless modern dialogs** with keyboard shortcuts  
 ✅ Silent tray startup  
 ✅ Instant publish on launch  
 ✅ Multi-RDP targets (Host + VPCs)  
@@ -438,8 +475,9 @@ Access via **File → Setup Port Forwarding...**
 ✅ Auto-publishing (configurable)  
 ✅ SHA-256 password protection  
 ✅ Bing wallpaper backgrounds  
-✅ Dark theme UI  
+✅ **Dark theme UI** with rounded buttons  
 ✅ Mobile-friendly portals  
+✅ **Separate port displays** for services & RDP  
 
 ---
 
