@@ -23,6 +23,15 @@ Configure your router to forward ports to your PC:
 ## 🚀 Quick Start
 
 ### 1. Configure
+**Option A: Use the Built-in Editor (Recommended)**
+1. Launch `HomeNet Lab.exe`
+2. Right-click system tray icon → **Show Window**
+3. Click **File → Edit Config.xml**
+4. Fill in your FTP credentials and settings
+5. Optionally check "Save as PC-specific config"
+6. Click **💾 Save**
+
+**Option B: Edit XML Manually**  
 Edit `config.xml` or create `[PCNAME].xml` for PC-specific settings:
 
 ```xml
@@ -246,9 +255,59 @@ Shows real-time information:
 - **IP Display** - External IP, PC name, local IP
 
 ### Menu Bar
+- **File → Edit Config.xml** - Built-in configuration editor
 - **File → Publish Web Portal** - Manual upload with result dialog
 - **File → Setup Port Forwarding...** - VPC setup wizard
 - **File → Exit** - Close application
+
+---
+
+## 📝 Configuration Editor
+
+**New in v1.2!** Built-in GUI editor for easy configuration management.
+
+### Access
+Click **File → Edit Config.xml** from the menu bar.
+
+### Features
+- **Visual Editor:** No need to manually edit XML files
+- **Smart Save:** Detects current config file (config.xml or PCNAME.xml)
+- **PC-Specific Configs:** Option to save as `[PCNAME].xml` when using default config
+- **Preservation:** Automatically preserves RDPTargets and Services sections
+- **Validation:** Ensures valid configuration before saving
+- **Live Reload:** Updates dashboard immediately after save
+
+### Editable Settings
+**FTP Settings:**
+- FTP Server address
+- Username
+- Password (secure PasswordBox)
+- Remote Path
+- HTML Filename
+
+**Security Settings:**
+- Access Password (secure PasswordBox)
+
+**Auto-Publish Settings:**
+- Enable/Disable toggle
+- Frequency in seconds
+
+### How to Use
+1. Open **File → Edit Config.xml**
+2. Modify desired settings in the form
+3. *Optional:* Check "Save as PC-specific config" to create `[PCNAME].xml`
+4. Click **💾 Save** to apply changes (or **❌ Cancel** to discard)
+5. Dashboard updates automatically with new settings
+
+### Benefits
+✅ No XML syntax knowledge required  
+✅ Prevents configuration errors  
+✅ Preserves complex sections (RDP targets, Services)  
+✅ Creates PC-specific configs easily  
+✅ Shows which config file is active  
+✅ Immediate feedback on save  
+
+**Note:** RDP Targets and Services must still be edited in XML (advanced sections). The editor preserves these when saving basic settings.
 
 ---
 
@@ -369,6 +428,7 @@ Access via **File → Setup Port Forwarding...**
 ## 🎉 Features at a Glance
 
 ✅ Auto-loads PC-specific configs  
+✅ **Built-in config editor (NEW!)**  
 ✅ Silent tray startup  
 ✅ Instant publish on launch  
 ✅ Multi-RDP targets (Host + VPCs)  
@@ -383,7 +443,7 @@ Access via **File → Setup Port Forwarding...**
 
 ---
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Platform:** Windows 10/11  
 **Framework:** .NET 8.0  
 **GitHub:** https://github.com/brucemurphy/HomeNet-Lab
